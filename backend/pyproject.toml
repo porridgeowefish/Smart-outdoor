@@ -1,0 +1,23 @@
+[project]
+name = "smart-outdoor-backend"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.135.1",
+    "sqlalchemy>=2.0.25",
+    "pydantic>=2.12.5",
+    "psycopg[binary]>=3.2.0",
+    "python-multipart>=0.0.20",
+    "uvicorn[standard]>=0.35.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=9.0.2",
+    "httpx>=0.28.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

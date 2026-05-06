@@ -1,0 +1,29 @@
+# Environment / secrets
+.env
+backend/.env
+backend/docs/PRIVATE_SECRETS.local.md
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+
+# Node
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+.logs/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Temp
+_screenshot_*.png
+_test_*.py

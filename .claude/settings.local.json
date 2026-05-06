@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(C:\\\\Users\\\\xmz14_ugn3mh4\\\\anaconda3\\\\envs\\\\real_base\\\\python.exe -m py_compile app/main.py)",
+      "Bash(C:\\\\Users\\\\xmz14_ugn3mh4\\\\anaconda3\\\\envs\\\\real_base\\\\python.exe -m py_compile app/core/config.py)",
+      "Bash(C:\\\\Users\\\\xmz14_ugn3mh4\\\\anaconda3\\\\envs\\\\real_base\\\\python.exe -m py_compile app/core/security.py)",
+      "Bash(C:\\\\Users\\\\xmz14_ugn3mh4\\\\anaconda3\\\\envs\\\\real_base\\\\python.exe -m py_compile app/db/session.py)",
+      "Bash(C:\\\\Users\\\\xmz14_ugn3mh4\\\\anaconda3\\\\envs\\\\real_base\\\\python.exe -m py_compile app/db/init_db.py)",
+      "PowerShell(Set-Location D:\\\\2_Study\\\\Smart_outdoor\\\\backend; $files = @\\('app\\\\main.py','app\\\\core\\\\config.py','app\\\\core\\\\security.py','app\\\\db\\\\session.py','app\\\\db\\\\init_db.py','app\\\\features\\\\auth\\\\router.py','app\\\\features\\\\auth\\\\service.py','app\\\\features\\\\auth\\\\schemas.py','app\\\\features\\\\users\\\\router.py','app\\\\features\\\\users\\\\service.py','app\\\\features\\\\users\\\\schemas.py','app\\\\features\\\\users\\\\model.py','app\\\\features\\\\users\\\\deps.py','app\\\\features\\\\routes\\\\router.py','app\\\\features\\\\routes\\\\service.py','app\\\\features\\\\routes\\\\schemas.py','app\\\\features\\\\routes\\\\model.py','app\\\\features\\\\routes\\\\parser.py'\\); foreach \\($f in $files\\) { & 'C:\\\\Users\\\\xmz14_ugn3mh4\\\\anaconda3\\\\envs\\\\real_base\\\\python.exe' -m py_compile $f 2>&1; if \\($LASTEXITCODE -ne 0\\) { Write-Host \"FAIL: $f\"; break } }; if \\($LASTEXITCODE -eq 0\\) { Write-Host \"All 18 Python files compiled OK\" })",
+      "Bash(Get-ChildItem -Path \"D:\\\\2_Study\\\\Smart_outdoor\\\\backend\\\\**\\\\*.kml\")",
+      "Bash(Select-Object FullName, Length)",
+      "Bash(Format-Table -AutoSize)",
+      "Bash(grep -E \"\\\\.\\(kml\\)$\")",
+      "Bash(psql *)",
+      "Bash(pip list *)",
+      "Bash(wmic service *)",
+      "Bash(C:Usersxmz14_ugn3mh4anaconda3envsreal_basepython.exe -c ' *)",
+      "Bash(curl -s http://127.0.0.1:8000/api/auth/login -H 'Content-Type: application/json' -d '{\"username\":\"test_user\",\"password\":\"test123456\"}')",
+      "Bash(curl -s http://127.0.0.1:8000/api/routes -H \"Authorization: Bearer $\\(curl -s http://127.0.0.1:8000/api/auth/login -H 'Content-Type: application/json' -d '{\"username\":\"test_user\",\"password\":\"test123456\"}')",
+      "Bash(netstat -ano)",
+      "Bash(findstr \":5173\\\\|:5174\\\\|:3000\")",
+      "Bash(findstr LISTENING)",
+      "PowerShell(Get-NetTCPConnection *)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(Get-CimInstance *)"
+    ]
+  }
+}
