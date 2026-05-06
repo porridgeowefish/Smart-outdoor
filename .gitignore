@@ -1,6 +1,7 @@
 # Environment / secrets
 .env
 backend/.env
+backend/.env.production
 backend/docs/PRIVATE_SECRETS.local.md
 
 # Python
@@ -27,3 +28,6 @@ Thumbs.db
 # Temp
 _screenshot_*.png
 _test_*.py
+
+# Deploy
+smart_outdoor_deploy.tar.gz

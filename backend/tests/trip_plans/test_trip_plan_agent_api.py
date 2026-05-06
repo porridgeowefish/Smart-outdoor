@@ -130,6 +130,52 @@ def test_agent_run_events_returns_sse_contract(
     assert "event: run.completed" in body
 
 
+def test_list_trip_plans_and_load_conversation(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    _upload_public_route(client, auth_headers, name="History route")
+    response = client.post(
+        "/api/trip-plans/messages",
+        headers=auth_headers,
+        json={"content": "成都周边自驾一日徒步，中等强度"},
+    )
+    trip_plan_id = response.json()["trip_plan_id"]
+
+    list_response = client.get("/api/trip-plans", headers=auth_headers)
+    detail_response = client.get(
+        f"/api/trip-plans/{trip_plan_id}/messages",
+        headers=auth_headers,
+    )
+
+    assert list_response.status_code == 200
+    assert list_response.json()["total"] >= 1
+    assert list_response.json()["items"][0]["trip_plan_id"] == trip_plan_id
+    assert detail_response.status_code == 200
+    detail = detail_response.json()
+    assert detail["trip_plan_id"] == trip_plan_id
+    assert [message["role"] for message in detail["messages"]] == ["user", "assistant"]
+    assert detail["candidate_routes"]
+
+
+def test_user_cannot_load_other_users_trip_plan_conversation(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    other_headers = _register_and_login(client, "trip_history_other")
+    response = client.post(
+        "/api/trip-plans/messages",
+        headers=auth_headers,
+        json={"content": "周末想从成都出发看雪山"},
+    )
+
+    detail_response = client.get(
+        f"/api/trip-plans/{response.json()['trip_plan_id']}/messages",
+        headers=other_headers,
+    )
+
+    assert detail_response.status_code == 404
+    assert detail_response.json()["code"] == "TRIP_PLAN_NOT_FOUND"
+
+
 def test_candidate_detail_returns_route_planning_detail_and_evidence(
     client: TestClient, auth_headers: dict[str, str]
 ) -> None:
@@ -151,7 +197,54 @@ def test_candidate_detail_returns_route_planning_detail_and_evidence(
     assert detail["candidate_id"] == candidate["candidate_id"]
     assert detail["route"]["route_id"] == candidate["route"]["route_id"]
     assert detail["planning_detail"]["summary"]
+    assert detail["planning_detail"]["llm_detail_card"]
     assert detail["evidence"]["weather"]["status"] in {"mocked", "unconfirmed"}
+    assert "daily_forecast" in detail["evidence"]["weather"]
+    assert "current" in detail["evidence"]["weather"]
+    assert detail["evidence"]["transport"]["status"] in {"mocked", "unconfirmed"}
+    assert "plans" in detail["evidence"]["transport"]
+    assert detail["evidence"]["web_evidence"]["status"] == "limited"
+    assert detail["evidence"]["web_evidence"]["provider"] == "mock"
+    assert detail["evidence"]["web_evidence"]["sources"][0]["url"]
+    assert detail["evidence"]["evaluator"]["passed"] is True
+    assert detail["evidence"]["evaluator"]["warnings"]
+
+
+def test_candidate_detail_transport_can_explain_bus_preference_mismatch(
+    client: TestClient, auth_headers: dict[str, str], monkeypatch
+) -> None:
+    from app.features.routes import service as route_service
+
+    monkeypatch.setattr(
+        route_service,
+        "reverse_geocode_wgs84",
+        lambda lon, lat: {
+            "province": "四川省",
+            "city": "甘孜藏族自治州",
+            "district": "康定市",
+            "display_name": "四川省 · 甘孜藏族自治州 · 康定市",
+            "provider": "amap",
+            "coordinate_system": "gcj02",
+        },
+    )
+    _upload_public_route(client, auth_headers, name="Cross city route")
+    response = client.post(
+        "/api/trip-plans/messages",
+        headers=auth_headers,
+        json={"content": "成都出发，大巴，一日徒步，中等强度"},
+    )
+    candidate = response.json()["candidate_routes"][0]
+
+    detail_response = client.get(
+        f"/api/trip-plans/{response.json()['trip_plan_id']}/candidate-routes/{candidate['candidate_id']}",
+        headers=auth_headers,
+    )
+
+    transport = detail_response.json()["evidence"]["transport"]
+    assert transport["preferred_mode"] == "bus"
+    assert transport["recommended_mode"] == "rail_plus_car"
+    assert transport["preference_matched"] is False
+    assert any(plan["mode"] == "rail_plus_car" for plan in transport["plans"])
 
 
 def test_closed_trip_plan_rejects_new_messages(

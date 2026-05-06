@@ -19,6 +19,9 @@ def client(tmp_path: pytest.TempPathFactory) -> TestClient:
     os.environ["ROUTE_STORAGE_DIR"] = str(route_dir)
     os.environ["ACTIVITY_STORAGE_DIR"] = str(activity_dir)
     os.environ["USE_MOCK_AMAP"] = "true"
+    os.environ["USE_MOCK_WEATHER"] = "true"
+    os.environ["USE_MOCK_SEARCH"] = "true"
+    os.environ["USE_MOCK_LLM"] = "true"
 
     from app.db.session import Base, engine
     from app.main import create_app

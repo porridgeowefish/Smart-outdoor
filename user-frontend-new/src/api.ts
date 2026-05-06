@@ -26,6 +26,12 @@ export type TripPlanMessageRequest = components['schemas']['TripPlanMessageReque
 export type TripPlanMessagePostResponse = components['schemas']['TripPlanMessagePostResponse']
 export type CandidateRouteItem = components['schemas']['CandidateRouteItem']
 export type CandidateRouteDetailResponse = components['schemas']['CandidateRouteDetailResponse']
+export type TripPlanListItem = components['schemas']['TripPlanListItem']
+export type TripPlanListResponse = components['schemas']['TripPlanListResponse']
+export type TripPlanConversationResponse = components['schemas']['TripPlanConversationResponse']
+export type RoutePlanSnapshotItem = components['schemas']['RoutePlanSnapshotItem']
+export type RoutePlanSnapshotListResponse = components['schemas']['RoutePlanSnapshotListResponse']
+export type RoutePlanSnapshotDetailResponse = components['schemas']['RoutePlanSnapshotDetailResponse']
 
 /** API 错误，携带 HTTP 状态码和后端返回的错误体 */
 export class ApiError extends Error {
@@ -198,6 +204,24 @@ export async function sendTripPlanMessage(
   return data
 }
 
+export async function listTripPlans(): Promise<TripPlanListResponse> {
+  const { data, error, response } = await apiClient.GET('/api/trip-plans')
+  if (error || !data) throw buildApiError(response.status, error, '获取历史对话失败')
+  return data
+}
+
+export async function getTripPlanConversation(
+  tripPlanId: string,
+): Promise<TripPlanConversationResponse> {
+  const { data, error, response } = await apiClient.GET('/api/trip-plans/{trip_plan_id}/messages', {
+    params: {
+      path: { trip_plan_id: tripPlanId },
+    },
+  })
+  if (error || !data) throw buildApiError(response.status, error, '获取对话记录失败')
+  return data
+}
+
 export async function getCandidateRouteDetail(
   tripPlanId: string,
   candidateId: string,
@@ -214,6 +238,46 @@ export async function getCandidateRouteDetail(
     },
   )
   if (error || !data) throw buildApiError(response.status, error, '获取候选线路详情失败')
+  return data
+}
+
+export async function saveCandidateRoute(
+  tripPlanId: string,
+  candidateId: string,
+): Promise<RoutePlanSnapshotDetailResponse> {
+  const { data, error, response } = await apiClient.POST(
+    '/api/trip-plans/{trip_plan_id}/candidate-routes/{candidate_id}/save',
+    {
+      params: {
+        path: {
+          trip_plan_id: tripPlanId,
+          candidate_id: candidateId,
+        },
+      },
+    },
+  )
+  if (error || !data) throw buildApiError(response.status, error, '保存规划失败')
+  return data
+}
+
+export async function listRoutePlanSnapshots(): Promise<RoutePlanSnapshotListResponse> {
+  const { data, error, response } = await apiClient.GET('/api/my/route-plan-snapshots')
+  if (error || !data) throw buildApiError(response.status, error, '获取我的规划失败')
+  return data
+}
+
+export async function getRoutePlanSnapshotDetail(
+  snapshotId: string,
+): Promise<RoutePlanSnapshotDetailResponse> {
+  const { data, error, response } = await apiClient.GET(
+    '/api/my/route-plan-snapshots/{snapshot_id}',
+    {
+      params: {
+        path: { snapshot_id: snapshotId },
+      },
+    },
+  )
+  if (error || !data) throw buildApiError(response.status, error, '获取规划详情失败')
   return data
 }
 

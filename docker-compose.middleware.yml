@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: smart_outdoor_postgres_local
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-smart_outdoor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smart_outdoor_dev_password}
+      POSTGRES_DB: smart_outdoor
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_local_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-smart_outdoor} -d smart_outdoor"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_local_data:

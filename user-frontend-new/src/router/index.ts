@@ -44,7 +44,8 @@ const router = createRouter({
     {
       path: '/plans/:id',
       name: 'plan-detail',
-      component: PlanDetail
+      component: PlanDetail,
+      meta: { requiresAuth: true }
     },
     {
       path: '/',
@@ -54,12 +55,14 @@ const router = createRouter({
         {
           path: 'chat',
           name: 'chat',
-          component: Chat
+          component: Chat,
+          meta: { requiresAuth: true }
         },
         {
           path: 'plans',
           name: 'plans',
-          component: Plans
+          component: Plans,
+          meta: { requiresAuth: true }
         },
         {
           path: 'routes',

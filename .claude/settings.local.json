@@ -22,7 +22,16 @@
       "Bash(findstr LISTENING)",
       "PowerShell(Get-NetTCPConnection *)",
       "PowerShell(Get-Process *)",
-      "PowerShell(Get-CimInstance *)"
+      "PowerShell(Get-CimInstance *)",
+      "Bash(where ssh *)",
+      "Bash(python -c \"import paramiko; print\\('paramiko available'\\)\")",
+      "Bash(python *)",
+      "Bash(tar czf *)",
+      "Bash(dir smart_outdoor_deploy.tar.gz)",
+      "Bash(docker compose *)",
+      "Bash(docker stop *)",
+      "Bash(docker rm *)",
+      "Bash(\"C:\\\\Users\\\\xmz14_ugn3mh4\\\\anaconda3\\\\envs\\\\real_base\\\\python.exe\" deploy_cloud.py)"
     ]
   }
 }

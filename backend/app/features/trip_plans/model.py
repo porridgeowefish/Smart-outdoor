@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
@@ -80,6 +80,30 @@ class TripPlanCandidateRoute(Base):
     rank: Mapped[int] = mapped_column(Integer)
     advantage_tags: Mapped[list] = mapped_column(JSON, default=list)
     recommendation_reason: Mapped[str] = mapped_column(Text)
+    score_breakdown: Mapped[dict] = mapped_column(JSON, default=dict)
+    planning_detail: Mapped[dict] = mapped_column(JSON, default=dict)
+    evidence: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utc_now)
+
+
+class RoutePlanSnapshot(Base):
+    __tablename__ = "route_plan_snapshots"
+    __table_args__ = (UniqueConstraint("source_candidate_id", name="uq_route_plan_snapshot_candidate"),)
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    user_id: Mapped[str] = mapped_column(String(36), index=True)
+    continue_trip_plan_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("trip_plans.id"), index=True
+    )
+    source_candidate_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("trip_plan_candidate_routes.id"), index=True
+    )
+    route_asset_id: Mapped[str] = mapped_column(String(36), index=True)
+    route_summary: Mapped[dict] = mapped_column(JSON, default=dict)
+    recommendation_reason: Mapped[str] = mapped_column(Text)
+    advantage_tags: Mapped[list] = mapped_column(JSON, default=list)
     score_breakdown: Mapped[dict] = mapped_column(JSON, default=dict)
     planning_detail: Mapped[dict] = mapped_column(JSON, default=dict)
     evidence: Mapped[dict] = mapped_column(JSON, default=dict)

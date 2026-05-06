@@ -194,6 +194,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/trip-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Trip Plans */
+        get: operations["read_trip_plans_api_trip_plans_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trip-plans/{trip_plan_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Trip Plan Messages */
+        get: operations["read_trip_plan_messages_api_trip_plans__trip_plan_id__messages_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/trip-plans/messages": {
         parameters: {
             query?: never;
@@ -237,6 +271,57 @@ export interface paths {
         };
         /** Read Candidate Route Detail */
         get: operations["read_candidate_route_detail_api_trip_plans__trip_plan_id__candidate_routes__candidate_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trip-plans/{trip_plan_id}/candidate-routes/{candidate_id}/save": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Save Candidate Route */
+        post: operations["save_candidate_route_api_trip_plans__trip_plan_id__candidate_routes__candidate_id__save_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/my/route-plan-snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read My Route Plan Snapshots */
+        get: operations["read_my_route_plan_snapshots_api_my_route_plan_snapshots_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/my/route-plan-snapshots/{snapshot_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read My Route Plan Snapshot Detail */
+        get: operations["read_my_route_plan_snapshot_detail_api_my_route_plan_snapshots__snapshot_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -594,6 +679,57 @@ export interface components {
             items: components["schemas"]["RouteListItem"][];
             pagination: components["schemas"]["Pagination"];
         };
+        /** RoutePlanSnapshotDetailResponse */
+        RoutePlanSnapshotDetailResponse: {
+            /** Snapshot Id */
+            snapshot_id: string;
+            /** Continue Trip Plan Id */
+            continue_trip_plan_id: string;
+            /** Source Candidate Id */
+            source_candidate_id: string;
+            route: components["schemas"]["CandidateRouteSummary"];
+            /** Advantage Tags */
+            advantage_tags: string[];
+            /** Recommendation Reason */
+            recommendation_reason: string;
+            /** Score Breakdown */
+            score_breakdown: {
+                [key: string]: unknown;
+            };
+            /** Planning Detail */
+            planning_detail: {
+                [key: string]: unknown;
+            };
+            /** Evidence */
+            evidence: {
+                [key: string]: unknown;
+            };
+            /** Created At */
+            created_at: string;
+        };
+        /** RoutePlanSnapshotItem */
+        RoutePlanSnapshotItem: {
+            /** Snapshot Id */
+            snapshot_id: string;
+            /** Continue Trip Plan Id */
+            continue_trip_plan_id: string;
+            /** Source Candidate Id */
+            source_candidate_id: string;
+            route: components["schemas"]["CandidateRouteSummary"];
+            /** Advantage Tags */
+            advantage_tags: string[];
+            /** Recommendation Reason */
+            recommendation_reason: string;
+            /** Created At */
+            created_at: string;
+        };
+        /** RoutePlanSnapshotListResponse */
+        RoutePlanSnapshotListResponse: {
+            /** Items */
+            items: components["schemas"]["RoutePlanSnapshotItem"][];
+            /** Total */
+            total: number;
+        };
         /**
          * RoutePrimaryFileResponse
          * @description 线路主文件信息：用户上传的原始轨迹文件。
@@ -640,6 +776,41 @@ export interface components {
             /** Parse Error */
             parse_error?: string | null;
         };
+        /** TripPlanConversationResponse */
+        TripPlanConversationResponse: {
+            /** Trip Plan Id */
+            trip_plan_id: string;
+            /** Title */
+            title: string;
+            /** Status */
+            status: string;
+            /** Context Summary */
+            context_summary: string | null;
+            /** Messages */
+            messages: components["schemas"]["TripPlanMessageResponse"][];
+            /** Candidate Routes */
+            candidate_routes: components["schemas"]["CandidateRouteItem"][];
+        };
+        /** TripPlanListItem */
+        TripPlanListItem: {
+            /** Trip Plan Id */
+            trip_plan_id: string;
+            /** Title */
+            title: string;
+            /** Status */
+            status: string;
+            /** Context Summary */
+            context_summary: string | null;
+            /** Updated At */
+            updated_at: string;
+        };
+        /** TripPlanListResponse */
+        TripPlanListResponse: {
+            /** Items */
+            items: components["schemas"]["TripPlanListItem"][];
+            /** Total */
+            total: number;
+        };
         /** TripPlanMessagePostResponse */
         TripPlanMessagePostResponse: {
             /** Trip Plan Id */
@@ -669,6 +840,8 @@ export interface components {
             role: string;
             /** Content */
             content: string;
+            /** Created At */
+            created_at?: string | null;
         };
         /** UserMe */
         UserMe: {
@@ -1108,6 +1281,70 @@ export interface operations {
             };
         };
     };
+    read_trip_plans_api_trip_plans_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripPlanListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_trip_plan_messages_api_trip_plans__trip_plan_id__messages_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                trip_plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripPlanConversationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     post_trip_plan_message_api_trip_plans_messages_post: {
         parameters: {
             query?: never;
@@ -1197,6 +1434,104 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CandidateRouteDetailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_candidate_route_api_trip_plans__trip_plan_id__candidate_routes__candidate_id__save_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                trip_plan_id: string;
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoutePlanSnapshotDetailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_my_route_plan_snapshots_api_my_route_plan_snapshots_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoutePlanSnapshotListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_my_route_plan_snapshot_detail_api_my_route_plan_snapshots__snapshot_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                snapshot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoutePlanSnapshotDetailResponse"];
                 };
             };
             /** @description Validation Error */
