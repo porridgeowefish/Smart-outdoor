@@ -15,6 +15,7 @@ from app.features.routes.schemas import (
     RouteListItem,
     RouteListResponse,
     RoutePrimaryFileResponse,
+    RouteTagTaxonomyResponse,
     RouteTrackResponse,
     RouteUploadResponse,
 )
@@ -23,11 +24,13 @@ from app.features.routes.service import (
     RouteNotFoundError,
     UnsupportedCoverImageTypeError,
     UnsupportedRouteFileTypeError,
+    build_track_preview,
     display_tags_from_manual_tags,
     get_visible_route_detail,
     list_visible_routes,
     upload_route,
 )
+from app.features.routes.tag_taxonomy import taxonomy_categories
 from app.features.users.deps import get_current_user
 from app.features.users.model import User
 
@@ -93,6 +96,7 @@ def list_routes(
             elevation_gain_m=analysis.elevation_gain_m,
             manual_tags=route.manual_tags or {},
             display_tags=display_tags_from_manual_tags(route.manual_tags or {}),
+            track_preview=build_track_preview(analysis),
         )
         for route, analysis in metric_filtered[start:end]
     ]
@@ -156,6 +160,11 @@ async def upload_route_file(
         parse_status=route_file.parse_status,
         parse_error=route_file.parse_error,
     )
+
+
+@router.get("/tag-taxonomy", response_model=RouteTagTaxonomyResponse)
+def get_route_tag_taxonomy() -> RouteTagTaxonomyResponse:
+    return RouteTagTaxonomyResponse(categories=taxonomy_categories())
 
 
 @router.get("/{route_id}", response_model=RouteDetailResponse)

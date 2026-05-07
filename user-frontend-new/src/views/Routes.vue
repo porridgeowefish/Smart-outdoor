@@ -1,192 +1,220 @@
 <template>
-  <div class="flex flex-col h-full bg-slate-50 relative">
-    <div class="h-[44px] bg-white border-b border-slate-100 flex items-center justify-between px-4 shrink-0 shadow-[0_2px_4px_rgba(0,0,0,0.02)] z-10 sticky top-0">
+  <div class="relative flex h-full flex-col bg-slate-50">
+    <header class="sticky top-0 z-10 flex h-[44px] shrink-0 items-center justify-between border-b border-slate-100 bg-white px-4 shadow-sm">
       <div class="flex items-center gap-3">
         <h1 class="text-[18px] font-bold text-slate-800">线路</h1>
-        <div class="flex items-center gap-1 text-[14px] text-slate-600 font-medium">
-          真实数据
-        </div>
+        <span class="text-[12px] font-medium text-slate-400">真实数据</span>
       </div>
-      <button @click="triggerRouteUpload" :disabled="isUploading" class="text-emerald-500 bg-emerald-50/50 px-3 py-1.5 rounded-full text-[12px] font-bold flex items-center gap-1 hover:bg-emerald-100 transition-colors">
-        <span v-if="isUploading" class="animate-spin w-3 h-3 border-2 border-emerald-200 border-t-emerald-500 rounded-full"></span>
-        <svg v-else xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      <button
+        class="flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1.5 text-[12px] font-bold text-emerald-600 transition-colors hover:bg-emerald-100 disabled:opacity-60"
+        :disabled="isUploading"
+        @click="triggerRouteUpload"
+      >
+        <span v-if="isUploading" class="h-3 w-3 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-500"></span>
+        <span v-else class="text-base leading-none">+</span>
         {{ isUploading ? '上传中...' : '发布线路' }}
       </button>
-      <input type="file" ref="routeInput" class="hidden" accept=".kml,.gpx,.geojson,.json" @change="onRouteSelected" />
-      <input type="file" ref="coverInput" class="hidden" accept="image/jpeg,image/png,image/webp" @change="onCoverSelected" />
-    </div>
+      <input ref="routeInput" type="file" class="hidden" accept=".kml,.gpx,.geojson,.json" @change="onRouteSelected" />
+      <input ref="coverInput" type="file" class="hidden" accept="image/jpeg,image/png,image/webp" @change="onCoverSelected" />
+    </header>
 
-    <div class="px-3 pt-3 pb-2 bg-white shrink-0 z-10 sticky top-[44px]">
-      <div class="flex gap-2 mb-3">
+    <section class="sticky top-[44px] z-10 shrink-0 bg-white px-3 pb-2 pt-3">
+      <div class="mb-3 flex gap-2">
         <div class="relative flex-grow">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          <input v-model.trim="keyword" @keyup.enter="loadRoutes" type="text" placeholder="搜索线路名称" class="w-full bg-slate-50 border border-transparent rounded-full py-[8px] pl-9 pr-4 text-[13px] outline-none focus:border-emerald-500 focus:bg-white transition-colors placeholder:text-slate-400" />
+          <input
+            v-model.trim="keyword"
+            type="text"
+            placeholder="搜索线路名称"
+            class="w-full rounded-full border border-transparent bg-slate-50 py-2 pl-4 pr-4 text-[13px] outline-none transition-colors placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white"
+            @keyup.enter="loadRoutes"
+          />
         </div>
-        <button @click="clearKeyword" class="text-slate-400 shrink-0 flex items-center justify-center px-1">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-        </button>
+        <button class="shrink-0 px-2 text-[12px] font-bold text-slate-400" @click="clearKeyword">清空</button>
       </div>
 
-      <div class="flex gap-2 overflow-x-auto hide-scrollbar pb-1 text-[13px]">
-        <button @click="visibility = 'all'; loadRoutes()" :class="filterClass('all')" class="shrink-0 px-3 py-1.5 font-medium rounded-full border">全部</button>
-        <button @click="visibility = 'public'; loadRoutes()" :class="filterClass('public')" class="shrink-0 px-3 py-1.5 font-medium rounded-full border">公开</button>
-        <button @click="visibility = 'private'; loadRoutes()" :class="filterClass('private')" class="shrink-0 px-3 py-1.5 font-medium rounded-full border">我的私有</button>
+      <div class="hide-scrollbar flex gap-2 overflow-x-auto pb-1 text-[13px]">
+        <button class="filter-btn" :class="filterClass('all')" @click="setVisibility('all')">全部</button>
+        <button class="filter-btn" :class="filterClass('public')" @click="setVisibility('public')">公开</button>
+        <button class="filter-btn" :class="filterClass('private')" @click="setVisibility('private')">我的私有</button>
       </div>
-    </div>
+    </section>
 
-    <div class="flex-grow overflow-y-auto px-3 py-3 h-full bg-slate-50">
-      <div v-if="isLoading" class="py-16 flex justify-center">
-        <span class="animate-spin w-6 h-6 border-2 border-emerald-100 border-t-emerald-500 rounded-full"></span>
+    <main class="flex-grow overflow-y-auto bg-slate-50 px-3 py-3">
+      <div v-if="isLoading" class="flex justify-center py-16">
+        <span class="h-6 w-6 animate-spin rounded-full border-2 border-emerald-100 border-t-emerald-500"></span>
       </div>
 
-      <div v-else-if="error" class="bg-red-50 text-red-600 border border-red-100 rounded-xl p-4 text-[13px]">
+      <div v-else-if="error" class="rounded-xl border border-red-100 bg-red-50 p-4 text-[13px] text-red-600">
         {{ error }}
       </div>
 
-      <div v-else-if="routes.length === 0" class="text-center py-16 px-8">
-        <div class="w-14 h-14 bg-emerald-50 rounded-2xl mx-auto mb-4 flex items-center justify-center text-emerald-500">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3V6Z"/><path d="M9 3v15"/><path d="M15 6v15"/></svg>
-        </div>
-        <h3 class="text-[16px] font-bold text-slate-800 mb-1">还没有线路</h3>
+      <div v-else-if="routes.length === 0" class="px-8 py-16 text-center">
+        <h3 class="mb-1 text-[16px] font-bold text-slate-800">还没有线路</h3>
         <p class="text-[13px] text-slate-500">上传 KML、GPX 或 GeoJSON 后，这里会显示数据库里的真实线路。</p>
       </div>
 
       <div v-else>
-        <div v-for="route in routes" :key="route.route_id" @click="$router.push(`/routes/${route.route_id}`)" class="bg-white rounded-[16px] p-3 mb-3 flex gap-3 shadow-[0_2px_8px_rgba(0,0,0,0.04)] active:scale-[0.98] transition-transform cursor-pointer">
-          <div class="w-[105px] h-[105px] rounded-xl overflow-hidden relative shrink-0 bg-slate-100">
-            <img :src="route.cover_image_url || fallbackImage" class="w-full h-full object-cover" />
-            <div :class="difficultyColor(route)" class="absolute top-0 left-0 text-slate-800 text-[10px] px-1.5 py-0.5 rounded-br-lg font-bold tracking-wide z-10 opacity-90">
+        <button
+          v-for="route in routes"
+          :key="route.route_id"
+          class="mb-3 flex w-full gap-3 rounded-2xl bg-white p-3 text-left shadow-sm transition-transform active:scale-[0.98]"
+          @click="router.push(`/routes/${route.route_id}`)"
+        >
+          <div class="relative h-[105px] w-[105px] shrink-0 overflow-hidden rounded-xl bg-slate-100">
+            <RoutePreviewCard
+              :track-preview="route.track_preview"
+              :distance-km="route.distance_km"
+              :elevation-gain-m="route.elevation_gain_m"
+            />
+            <div class="absolute left-0 top-0 rounded-br-lg px-1.5 py-0.5 text-[10px] font-bold text-slate-800 opacity-90" :class="difficultyColor(route)">
               {{ difficultyLabel(route) }}
             </div>
           </div>
 
-          <div class="flex flex-col flex-grow min-w-0 justify-between py-0.5">
+          <div class="flex min-w-0 flex-grow flex-col justify-between py-0.5">
             <div>
-              <h3 class="font-bold text-slate-800 text-[15px] mb-1.5 leading-snug line-clamp-2 pr-1">{{ route.name }}</h3>
-              <p v-if="route.location" class="text-[11px] text-slate-400 mb-1.5 flex items-center gap-0.5">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                {{ route.location }}
-              </p>
-              <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-slate-500 mb-2 font-medium">
-                <span class="flex items-center gap-0.5 shrink-0">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h5l2.5-4 4.5 8 2.5-4h3"/></svg>
-                  {{ formatKm(route.distance_km) }} 公里
-                </span>
-                <span class="flex items-center gap-0.5 shrink-0">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                  {{ Math.round(route.elevation_gain_m) }} 米爬升
-                </span>
-                <span class="flex items-center gap-0.5 shrink-0">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                  {{ estimateDuration(route) }}
-                </span>
+              <h3 class="mb-1.5 line-clamp-2 pr-1 text-[15px] font-bold leading-snug text-slate-800">{{ route.name }}</h3>
+              <p v-if="route.location" class="mb-1.5 line-clamp-1 text-[11px] text-slate-400">{{ route.location }}</p>
+              <div class="mb-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] font-medium text-slate-500">
+                <span>{{ formatKm(route.distance_km) }} 公里</span>
+                <span>{{ Math.round(route.elevation_gain_m) }} 米爬升</span>
+                <span>{{ estimateDuration(route) }}</span>
               </div>
             </div>
 
-            <div class="flex flex-wrap items-center gap-1.5 mt-auto">
-              <span v-for="tag in route.display_tags" :key="tag" class="bg-slate-100 text-slate-600 text-[10px] px-1.5 py-0.5 rounded font-medium">{{ tag }}</span>
-              <span class="text-[10px] px-1.5 py-0.5 rounded font-medium ml-auto" :class="route.visibility === 'public' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'">
+            <div class="mt-auto flex flex-wrap items-center gap-1.5">
+              <span v-for="tag in route.display_tags" :key="tag" class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">{{ tag }}</span>
+              <span class="ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium" :class="route.visibility === 'public' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'">
                 {{ route.visibility === 'public' ? '公开' : '私有' }}
               </span>
             </div>
           </div>
-        </div>
-      </div>
-
-      <div class="h-4"></div>
-    </div>
-
-    <div v-if="showPublishModal" class="absolute inset-0 z-50 bg-white flex flex-col font-sans">
-      <div class="h-14 flex items-center justify-between px-4 border-b border-slate-100 shrink-0">
-        <button @click="closeUploadModal" class="text-slate-500 font-medium">取消</button>
-        <h2 class="text-[16px] font-bold text-slate-800">编辑线路</h2>
-        <button @click="submitRoute" :disabled="isSubmitting || !draftRoute.name.trim()" class="text-emerald-500 font-bold disabled:opacity-50">
-          {{ isSubmitting ? '保存中...' : '发布' }}
         </button>
       </div>
+    </main>
+
+    <section v-if="showPublishModal" class="absolute inset-0 z-50 flex flex-col bg-white">
+      <header class="flex h-14 shrink-0 items-center justify-between border-b border-slate-100 px-4">
+        <button class="font-medium text-slate-500" @click="closeUploadModal">取消</button>
+        <h2 class="text-[16px] font-bold text-slate-800">编辑线路</h2>
+        <button class="font-bold text-emerald-500 disabled:opacity-50" :disabled="isSubmitting || !draftRoute.name.trim()" @click="submitRoute">
+          {{ isSubmitting ? '保存中...' : '发布' }}
+        </button>
+      </header>
 
       <div class="flex-grow overflow-y-auto">
-        <div class="relative bg-slate-900 h-[220px]">
-          <img :src="coverPreviewUrl || fallbackImage" class="w-full h-full object-cover opacity-70 mix-blend-overlay filter contrast-125" />
-          <svg v-if="!coverPreviewUrl" class="absolute inset-0 w-full h-full pointer-events-none drop-shadow-lg" viewBox="0 0 400 220" preserveAspectRatio="none">
-            <path d="M 50,150 C 100,100 120,180 200,100 S 280,50 350,80" fill="none" stroke="#10b981" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-            <circle cx="50" cy="150" r="5" fill="#3b82f6" stroke="#ffffff" stroke-width="2" />
-            <circle cx="350" cy="80" r="5" fill="#ef4444" stroke="#ffffff" stroke-width="2" />
-          </svg>
-          <div class="absolute top-3 right-3 flex gap-2">
-            <button @click="triggerCoverUpload" class="bg-white/90 text-slate-700 text-[12px] font-bold px-3 py-1.5 rounded-full shadow">
+        <div class="relative h-[220px] bg-slate-900">
+          <img v-if="coverPreviewUrl" :src="coverPreviewUrl" class="h-full w-full object-cover opacity-75" alt="" />
+          <div v-else class="h-full w-full">
+            <RoutePreviewCard show-stats />
+          </div>
+          <div class="absolute right-3 top-3 flex gap-2">
+            <button class="rounded-full bg-white/90 px-3 py-1.5 text-[12px] font-bold text-slate-700 shadow" @click="triggerCoverUpload">
               {{ coverImage ? '更换封面' : '选择封面' }}
             </button>
-            <button v-if="coverImage" @click="clearCover" class="bg-black/45 text-white text-[12px] font-bold px-3 py-1.5 rounded-full shadow">
+            <button v-if="coverImage" class="rounded-full bg-black/45 px-3 py-1.5 text-[12px] font-bold text-white shadow" @click="clearCover">
               清除
             </button>
           </div>
-          <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-900 to-transparent pt-12 pb-3 px-4 text-white">
-            <div class="text-[11px] text-white/70 font-bold uppercase tracking-wider mb-1">待上传文件</div>
-            <div class="text-[18px] font-bold leading-tight truncate">{{ selectedFile?.name }}</div>
-            <div class="text-[12px] text-white/70 mt-1">{{ selectedFile ? formatFileSize(selectedFile.size) : '' }}</div>
+          <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-900 to-transparent px-4 pb-3 pt-12 text-white">
+            <div class="mb-1 text-[11px] font-bold uppercase tracking-wider text-white/70">待上传文件</div>
+            <div class="truncate text-[18px] font-bold leading-tight">{{ selectedFile?.name }}</div>
+            <div class="mt-1 text-[12px] text-white/70">{{ selectedFile ? formatFileSize(selectedFile.size) : '' }}</div>
           </div>
         </div>
 
         <div class="p-5">
           <div class="mb-5">
-            <label class="block text-[13px] font-bold text-slate-800 mb-2">线路名称 <span class="text-red-500">*</span></label>
-            <input v-model="draftRoute.name" type="text" placeholder="给线路起一个名字" class="w-full bg-slate-50 border border-slate-200 rounded-[12px] px-4 py-3 text-[14px] outline-none focus:border-emerald-500 focus:bg-emerald-50/50 transition-colors" />
+            <label class="mb-2 block text-[13px] font-bold text-slate-800">线路名称 <span class="text-red-500">*</span></label>
+            <input v-model="draftRoute.name" type="text" placeholder="给线路起一个名字" class="form-input" />
           </div>
 
           <div class="mb-5">
-            <label class="block text-[13px] font-bold text-slate-800 mb-2">线路描述</label>
-            <textarea v-model="draftRoute.description" placeholder="描述路线亮点、注意事项或补给点" rows="4" class="w-full bg-slate-50 border border-slate-200 rounded-[12px] px-4 py-3 text-[14px] outline-none focus:border-emerald-500 focus:bg-emerald-50/50 transition-colors resize-none"></textarea>
+            <label class="mb-2 block text-[13px] font-bold text-slate-800">线路描述</label>
+            <textarea v-model="draftRoute.description" placeholder="描述路线亮点、注意事项或补给点" rows="4" class="form-input resize-none"></textarea>
           </div>
 
           <div class="mb-5">
-            <label class="block text-[13px] font-bold text-slate-800 mb-2">添加标签</label>
-            <div class="flex flex-wrap gap-2 mb-3">
-              <button v-for="tag in availableTags" :key="tag" @click="toggleTag(tag)" :class="draftRoute.tags.includes(tag) ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-white text-slate-600 border-slate-200'" class="px-3 py-1.5 rounded-full text-[12px] font-medium border transition-colors shadow-sm active:scale-95">
-                {{ tag }}
-              </button>
+            <div class="mb-2 flex items-center justify-between">
+              <label class="block text-[13px] font-bold text-slate-800">多维标签</label>
+              <span class="text-[11px] font-medium text-slate-400">按分类多选</span>
+            </div>
+            <div v-if="taxonomyLoading" class="rounded-xl bg-slate-50 p-4 text-[13px] text-slate-500">正在加载标签...</div>
+            <div v-else-if="taxonomyError" class="rounded-xl bg-red-50 p-4 text-[13px] text-red-500">{{ taxonomyError }}</div>
+            <div v-else class="space-y-4">
+              <section v-for="category in tagCategories" :key="category.key">
+                <h3 class="mb-2 text-[12px] font-black text-slate-500">{{ category.label }}</h3>
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    v-for="tag in category.tags"
+                    :key="`${category.key}-${tag}`"
+                    class="rounded-full border px-3 py-1.5 text-[12px] font-medium shadow-sm transition-colors active:scale-95"
+                    :class="isTagSelected(category.key, tag) ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-200 bg-white text-slate-600'"
+                    @click="toggleTag(category.key, tag)"
+                  >
+                    {{ tag }}
+                  </button>
+                </div>
+              </section>
             </div>
           </div>
 
           <div class="mb-5">
-            <label class="block text-[13px] font-bold text-slate-800 mb-2">难易度预估</label>
+            <label class="mb-2 block text-[13px] font-bold text-slate-800">难易度预估</label>
             <div class="flex gap-2">
-              <button v-for="diff in difficulties" :key="diff" @click="draftRoute.difficulty = diff" :class="draftRoute.difficulty === diff ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-slate-50 text-slate-600 border-slate-200'" class="px-4 py-2 flex-grow rounded-[10px] text-[13px] font-bold border transition-colors">{{ diff }}</button>
+              <button
+                v-for="diff in difficulties"
+                :key="diff"
+                class="flex-grow rounded-xl border px-4 py-2 text-[13px] font-bold transition-colors"
+                :class="draftRoute.difficulty === diff ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-200 bg-slate-50 text-slate-600'"
+                @click="draftRoute.difficulty = diff"
+              >
+                {{ diff }}
+              </button>
             </div>
           </div>
 
           <div class="mb-5 flex items-center justify-between">
             <label class="text-[13px] font-bold text-slate-800">公开线路</label>
-            <button @click="draftRoute.isPublic = !draftRoute.isPublic" :class="draftRoute.isPublic ? 'bg-emerald-500' : 'bg-slate-200'" class="w-11 h-6 rounded-full relative transition-colors duration-300">
-              <div :class="draftRoute.isPublic ? 'translate-x-5' : 'translate-x-0'" class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-300"></div>
+            <button class="relative h-6 w-11 rounded-full transition-colors duration-300" :class="draftRoute.isPublic ? 'bg-emerald-500' : 'bg-slate-200'" @click="draftRoute.isPublic = !draftRoute.isPublic">
+              <div class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-300" :class="draftRoute.isPublic ? 'translate-x-5' : 'translate-x-0'"></div>
             </button>
           </div>
 
-          <div v-if="uploadError" class="p-3 bg-red-50 text-red-600 text-[13px] rounded-xl border border-red-100">
+          <div v-if="uploadError" class="rounded-xl border border-red-100 bg-red-50 p-3 text-[13px] text-red-600">
             {{ uploadError }}
           </div>
-
           <div class="h-20"></div>
         </div>
       </div>
-    </div>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { listRoutes, uploadRoute, type RouteListItem } from '../api'
+import {
+  getRouteTagTaxonomy,
+  listRoutes,
+  uploadRoute,
+  type RouteListItem,
+  type RouteTagTaxonomyResponse,
+} from '../api'
+import RoutePreviewCard from '../components/RoutePreviewCard.vue'
+
+type TagCategory = RouteTagTaxonomyResponse['categories'][number]
 
 const router = useRouter()
-const fallbackImage = 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'
 
 const routes = ref<RouteListItem[]>([])
+const tagCategories = ref<TagCategory[]>([])
 const routeInput = ref<HTMLInputElement | null>(null)
 const coverInput = ref<HTMLInputElement | null>(null)
 const keyword = ref('')
 const visibility = ref('all')
 const isLoading = ref(false)
+const taxonomyLoading = ref(false)
 const isUploading = ref(false)
 const isSubmitting = ref(false)
 const showPublishModal = ref(false)
@@ -195,19 +223,21 @@ const coverImage = ref<File | null>(null)
 const coverPreviewUrl = ref('')
 const error = ref('')
 const uploadError = ref('')
+const taxonomyError = ref('')
 
-const availableTags = ['徒步', '登山', '溯溪', '骑行', '风景好', '挑战', '亲子']
 const difficulties = ['轻松', '标准', '困难']
 
 const draftRoute = reactive({
   name: '',
   description: '',
-  tags: [] as string[],
+  tags: {} as Record<string, string[]>,
   difficulty: '标准',
   isPublic: true,
 })
 
-onMounted(loadRoutes)
+onMounted(async () => {
+  await Promise.all([loadRoutes(), loadTagTaxonomy()])
+})
 
 async function loadRoutes() {
   isLoading.value = true
@@ -220,15 +250,33 @@ async function loadRoutes() {
       page_size: 50,
     })
     routes.value = data.items
-  } catch (e: any) {
-    error.value = e.message || '线路列表加载失败'
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : '线路列表加载失败'
   } finally {
     isLoading.value = false
   }
 }
 
+async function loadTagTaxonomy() {
+  taxonomyLoading.value = true
+  taxonomyError.value = ''
+  try {
+    const data = await getRouteTagTaxonomy()
+    tagCategories.value = data.categories
+  } catch (e) {
+    taxonomyError.value = e instanceof Error ? e.message : '标签加载失败'
+  } finally {
+    taxonomyLoading.value = false
+  }
+}
+
 function clearKeyword() {
   keyword.value = ''
+  loadRoutes()
+}
+
+function setVisibility(value: string) {
+  visibility.value = value
   loadRoutes()
 }
 
@@ -248,7 +296,7 @@ function onRouteSelected(e: Event) {
   clearCover()
   draftRoute.name = file.name.replace(/\.[^/.]+$/, '')
   draftRoute.description = ''
-  draftRoute.tags = []
+  draftRoute.tags = {}
   draftRoute.difficulty = '标准'
   draftRoute.isPublic = true
   uploadError.value = ''
@@ -282,15 +330,15 @@ async function submitRoute() {
       description: draftRoute.description,
       visibility: draftRoute.isPublic ? 'public' : 'private',
       manualTags: {
-        labels: draftRoute.tags,
-        difficulty: draftRoute.difficulty,
+        ...selectedManualTags(),
+        difficulty: [draftRoute.difficulty],
       },
     })
     closeUploadModal()
     await loadRoutes()
     router.push(`/routes/${uploaded.route_id}`)
-  } catch (e: any) {
-    uploadError.value = e.message || '上传失败'
+  } catch (e) {
+    uploadError.value = e instanceof Error ? e.message : '上传失败'
   } finally {
     isSubmitting.value = false
     isUploading.value = false
@@ -312,20 +360,30 @@ function clearCover() {
   if (coverInput.value) coverInput.value.value = ''
 }
 
-function toggleTag(tag: string) {
-  if (draftRoute.tags.includes(tag)) {
-    draftRoute.tags = draftRoute.tags.filter((item) => item !== tag)
+function toggleTag(categoryKey: string, tag: string) {
+  const current = draftRoute.tags[categoryKey] || []
+  if (current.includes(tag)) {
+    draftRoute.tags[categoryKey] = current.filter((item) => item !== tag)
+    if (draftRoute.tags[categoryKey].length === 0) delete draftRoute.tags[categoryKey]
     return
   }
-  if (draftRoute.tags.length < 3) {
-    draftRoute.tags.push(tag)
-  }
+  draftRoute.tags[categoryKey] = [...current, tag]
+}
+
+function isTagSelected(categoryKey: string, tag: string) {
+  return (draftRoute.tags[categoryKey] || []).includes(tag)
+}
+
+function selectedManualTags() {
+  return Object.fromEntries(
+    Object.entries(draftRoute.tags).filter(([, values]) => values.length > 0),
+  )
 }
 
 function filterClass(value: string) {
   return visibility.value === value
-    ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-    : 'bg-slate-50 text-slate-700 border-slate-100'
+    ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
+    : 'border-slate-100 bg-slate-50 text-slate-700'
 }
 
 function difficultyLabel(route: RouteListItem) {
@@ -367,5 +425,26 @@ function formatFileSize(size: number) {
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+.filter-btn {
+  flex-shrink: 0;
+  border-radius: 9999px;
+  border-width: 1px;
+  padding: 0.375rem 0.75rem;
+  font-weight: 500;
+}
+.form-input {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(226 232 240);
+  background: rgb(248 250 252);
+  padding: 0.75rem 1rem;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.form-input:focus {
+  border-color: rgb(16 185 129);
+  background: rgb(236 253 245 / 0.5);
 }
 </style>

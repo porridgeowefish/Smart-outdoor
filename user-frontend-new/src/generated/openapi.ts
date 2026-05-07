@@ -15,7 +15,7 @@ export interface paths {
         put?: never;
         /**
          * Register
-         * @description 注册新用户。用户名重复时返回 409。
+         * @description ע�����û����û����ظ�ʱ���� 409��
          */
         post: operations["register_api_auth_register_post"];
         delete?: never;
@@ -35,7 +35,7 @@ export interface paths {
         put?: never;
         /**
          * Login
-         * @description 登录并签发 JWT Token。校验失败返回 401。
+         * @description ��¼��ǩ�� JWT Token��У��ʧ�ܷ��� 401��
          */
         post: operations["login_api_auth_login_post"];
         delete?: never;
@@ -139,11 +139,11 @@ export interface paths {
         };
         /**
          * List Routes
-         * @description 查询线路列表，支持关键词、可见性、标签、距离和爬升范围过滤。
+         * @description ��ѯ��·�б��֧�ֹؼ��ʡ��ɼ��ԡ���ǩ�������������Χ���ˡ�
          *
-         *     过滤策略：先通过 DB 查询 + 内存过滤得到完整结果集，
-         *     再在内存中对距离/爬升指标进行范围过滤（这些指标存在 snapshot 表中），
-         *     最后手动分页返回。
+         *     ���˲��ԣ���ͨ�� DB ��ѯ + �ڴ���˵õ������������
+         *     �����ڴ��жԾ���/����ָ����з�Χ���ˣ���Щָ����� snapshot ���У���
+         *     ����ֶ���ҳ���ء�
          */
         get: operations["list_routes_api_routes_get"];
         put?: never;
@@ -165,9 +165,26 @@ export interface paths {
         put?: never;
         /**
          * Upload Route File
-         * @description 上传线路轨迹文件（GPX/KML/GeoJSON），可选同时上传封面图片。
+         * @description �ϴ���·�켣�ļ���GPX/KML/GeoJSON������ѡͬʱ�ϴ�����ͼƬ��
          */
         post: operations["upload_route_file_api_routes_upload_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/routes/tag-taxonomy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Route Tag Taxonomy */
+        get: operations["get_route_tag_taxonomy_api_routes_tag_taxonomy_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -183,7 +200,7 @@ export interface paths {
         };
         /**
          * Get Route Detail
-         * @description 获取线路详情，包含元数据、分析指标、轨迹数据和操作权限。
+         * @description ��ȡ��·���飬����Ԫ���ݡ�����ָ�ꡢ�켣���ݺͲ���Ȩ�ޡ�
          */
         get: operations["get_route_detail_api_routes__route_id__get"];
         put?: never;
@@ -511,6 +528,10 @@ export interface components {
             cover_image_url: string | null;
             /** Display Tags */
             display_tags: string[];
+            /** Track Preview */
+            track_preview?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -526,7 +547,7 @@ export interface components {
         };
         /**
          * LoginResponse
-         * @description 登录成功响应，包含 JWT Token 和用户公开信息。
+         * @description ��¼�ɹ���Ӧ������ JWT Token ���û�������Ϣ��
          */
         LoginResponse: {
             /** Access Token */
@@ -535,10 +556,7 @@ export interface components {
             token_type: string;
             user: components["schemas"]["UserPublic"];
         };
-        /**
-         * Pagination
-         * @description 分页元数据。
-         */
+        /** Pagination */
         Pagination: {
             /** Page */
             page: number;
@@ -549,7 +567,7 @@ export interface components {
         };
         /**
          * RegisterRequest
-         * @description 注册请求。nickname 未填时自动使用 username。
+         * @description ע������nickname δ��ʱ�Զ�ʹ�� username��
          */
         RegisterRequest: {
             /** Username */
@@ -563,10 +581,7 @@ export interface components {
         RegisterResponse: {
             user: components["schemas"]["UserPublic"];
         };
-        /**
-         * RouteActionsResponse
-         * @description 当前用户对该线路可执行的操作。
-         */
+        /** RouteActionsResponse */
         RouteActionsResponse: {
             /** Can Send To Trip Plan */
             can_send_to_trip_plan: boolean;
@@ -575,10 +590,7 @@ export interface components {
             /** Can Edit */
             can_edit: boolean;
         };
-        /**
-         * RouteAnalysisResponse
-         * @description 线路分析指标：距离、海拔、坡度、起终点、边界框等。
-         */
+        /** RouteAnalysisResponse */
         RouteAnalysisResponse: {
             /** Route Analysis Snapshot Id */
             route_analysis_snapshot_id: string;
@@ -617,10 +629,7 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        /**
-         * RouteDetailResponse
-         * @description 线路详情：聚合元数据、分析指标、轨迹数据和权限信息。
-         */
+        /** RouteDetailResponse */
         RouteDetailResponse: {
             /** Route Id */
             route_id: string;
@@ -647,10 +656,7 @@ export interface components {
             primary_file: components["schemas"]["RoutePrimaryFileResponse"];
             actions: components["schemas"]["RouteActionsResponse"];
         };
-        /**
-         * RouteListItem
-         * @description 线路列表中的单条摘要信息。
-         */
+        /** RouteListItem */
         RouteListItem: {
             /** Route Id */
             route_id: string;
@@ -672,6 +678,7 @@ export interface components {
             };
             /** Display Tags */
             display_tags: string[];
+            track_preview?: components["schemas"]["RouteTrackPreviewResponse"] | null;
         };
         /** RouteListResponse */
         RouteListResponse: {
@@ -730,10 +737,7 @@ export interface components {
             /** Total */
             total: number;
         };
-        /**
-         * RoutePrimaryFileResponse
-         * @description 线路主文件信息：用户上传的原始轨迹文件。
-         */
+        /** RoutePrimaryFileResponse */
         RoutePrimaryFileResponse: {
             /** File Id */
             file_id: string;
@@ -744,10 +748,34 @@ export interface components {
             /** Parse Status */
             parse_status: string;
         };
-        /**
-         * RouteTrackResponse
-         * @description 线路轨迹数据：简化后的 GeoJSON LineString，用于前端地图渲染。
-         */
+        /** RouteTagCategoryResponse */
+        RouteTagCategoryResponse: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Tags */
+            tags: string[];
+        };
+        /** RouteTagTaxonomyResponse */
+        RouteTagTaxonomyResponse: {
+            /** Categories */
+            categories: components["schemas"]["RouteTagCategoryResponse"][];
+        };
+        /** RouteTrackPreviewResponse */
+        RouteTrackPreviewResponse: {
+            /** Format */
+            format: string;
+            /** Coordinate System */
+            coordinate_system: string;
+            /** Point Count */
+            point_count: number;
+            /** Geojson */
+            geojson: {
+                [key: string]: unknown;
+            };
+        };
+        /** RouteTrackResponse */
         RouteTrackResponse: {
             /** Format */
             format: string;
@@ -762,10 +790,7 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        /**
-         * RouteUploadResponse
-         * @description 线路上传结果：返回线路ID、文件ID和解析状态。
-         */
+        /** RouteUploadResponse */
         RouteUploadResponse: {
             /** Route Id */
             route_id: string;
@@ -1244,6 +1269,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_route_tag_taxonomy_api_routes_tag_taxonomy_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RouteTagTaxonomyResponse"];
                 };
             };
         };

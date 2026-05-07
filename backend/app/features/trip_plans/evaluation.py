@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.features.routes.model import RouteAnalysisSnapshot, RouteAsset
 from app.features.routes.service import display_tags_from_manual_tags
-from app.features.trip_plans.retrieval import preference_score
+from app.features.trip_plans.retrieval import RouteScore
 
 
 def advantage_tags(
@@ -31,9 +31,19 @@ def estimated_duration(analysis: RouteAnalysisSnapshot) -> str:
 
 
 def score_breakdown(route: RouteAsset, ability_and_preference_score: float) -> dict:
+    if isinstance(ability_and_preference_score, RouteScore):
+        return {
+            "total_score": ability_and_preference_score.total,
+            "ability_score": ability_and_preference_score.ability,
+            "preference_score": ability_and_preference_score.preference,
+            "metrics_score": ability_and_preference_score.metrics,
+            "evidence_score": ability_and_preference_score.evidence,
+            "matched_tags": ability_and_preference_score.matched_tags,
+            "route_tags": ability_and_preference_score.route_tags[:12],
+        }
     return {
         "ability_score": ability_and_preference_score,
-        "preference_score": preference_score(route),
+        "preference_score": 0.0,
         "evidence_score": 0.5,
     }
 

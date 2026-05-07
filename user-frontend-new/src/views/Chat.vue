@@ -82,6 +82,17 @@
               <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-400 [animation-delay:150ms]"></span>
               <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-400 [animation-delay:300ms]"></span>
             </div>
+            <div v-if="message.status === 'thinking'" class="mt-3 space-y-1.5 rounded-xl bg-slate-50 p-2">
+              <div
+                v-for="(stage, index) in planningStages"
+                :key="stage"
+                class="flex items-center gap-2 text-[12px]"
+                :class="index <= (message.progressIndex ?? 0) ? 'text-emerald-700' : 'text-slate-400'"
+              >
+                <span class="h-1.5 w-1.5 rounded-full" :class="index <= (message.progressIndex ?? 0) ? 'bg-emerald-500' : 'bg-slate-300'"></span>
+                {{ stage }}
+              </div>
+            </div>
           </div>
 
           <div v-if="message.candidates?.length" class="-mx-4 flex gap-3 overflow-x-auto px-4 pb-3">
@@ -92,8 +103,13 @@
               @click="openCandidate(candidate)"
             >
               <div class="relative flex h-[112px] items-center justify-center overflow-hidden bg-slate-100">
-                <img v-if="candidate.route.cover_image_url" :src="candidate.route.cover_image_url" class="h-full w-full object-cover" alt="" />
-                <div v-else class="relative h-full w-full bg-gradient-to-br from-emerald-50 via-slate-100 to-orange-50">
+                <RoutePreviewCard
+                  :track-preview="candidate.route.track_preview"
+                  :distance-km="candidate.route.distance_km"
+                  :elevation-gain-m="candidate.route.elevation_gain_m"
+                  show-stats
+                />
+                <div v-if="false" class="relative h-full w-full bg-gradient-to-br from-emerald-50 via-slate-100 to-orange-50">
                   <svg class="absolute inset-0 h-full w-full" viewBox="0 0 270 112" preserveAspectRatio="none" fill="none">
                     <path d="M18 82 C58 42 78 88 116 52 S175 26 218 56 S244 74 256 36" stroke="#10b981" stroke-width="5" stroke-linecap="round" />
                     <path d="M18 82 C58 42 78 88 116 52 S175 26 218 56 S244 74 256 36" stroke="white" stroke-width="2" stroke-linecap="round" stroke-dasharray="8 8" opacity="0.8" />
@@ -228,6 +244,12 @@
 
         <div class="mt-5">
           <button
+            class="mb-2 w-full rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-[15px] font-black text-emerald-700 shadow-sm"
+            @click="openRouteDetail"
+          >
+            查看轨迹详情
+          </button>
+          <button
             class="w-full rounded-2xl bg-emerald-500 px-4 py-3 text-[15px] font-black text-white shadow-sm disabled:bg-slate-300"
             :disabled="isSavingCandidate"
             @click="saveCurrentCandidate"
@@ -254,12 +276,14 @@ import {
   type CandidateRouteItem,
   type TripPlanListItem,
 } from '../api'
+import RoutePreviewCard from '../components/RoutePreviewCard.vue'
 
 type ChatMessage = {
   id: string
   role: 'user' | 'assistant'
   content: string
   status?: 'thinking' | 'done'
+  progressIndex?: number
   candidates?: CandidateRouteItem[]
 }
 
@@ -303,6 +327,8 @@ const saveMessage = ref('')
 const showHistory = ref(false)
 const historyLoading = ref(false)
 const historyItems = ref<TripPlanListItem[]>([])
+const planningStages = ['理解需求', '匹配能力画像', '召回线路', '查询天气/交通/公开信息', '生成推荐卡片']
+let progressTimer: number | null = null
 
 onMounted(async () => {
   await loadHistory()
@@ -314,6 +340,9 @@ onMounted(async () => {
   const activeTripPlanId = localStorage.getItem('active_trip_plan_id')
   if (activeTripPlanId) {
     await loadConversation(activeTripPlanId, false)
+  } else if (!sessionStorage.getItem('chat_auto_routed') && historyItems.value.length === 0) {
+    sessionStorage.setItem('chat_auto_routed', '1')
+    router.replace('/routes')
   }
 })
 
@@ -330,9 +359,11 @@ async function sendText(text: string) {
   messages.value.push({
     id: assistantId,
     role: 'assistant',
-    content: '正在整理你的需求...',
+    content: '正在理解你的出行需求...',
     status: 'thinking',
+    progressIndex: 0,
   })
+  startPlanningProgress(assistantId)
   await scrollToBottom()
 
   try {
@@ -353,6 +384,7 @@ async function sendText(text: string) {
       assistant.status = 'done'
     }
   } finally {
+    stopPlanningProgress()
     isReplying.value = false
     await scrollToBottom()
   }
@@ -431,6 +463,29 @@ async function saveCurrentCandidate() {
     saveMessage.value = error instanceof Error ? error.message : '保存规划失败'
   } finally {
     isSavingCandidate.value = false
+  }
+}
+
+function openRouteDetail() {
+  if (!candidateDetail.value) return
+  router.push(`/routes/${candidateDetail.value.route.route_id}`)
+}
+
+function startPlanningProgress(assistantId: string) {
+  stopPlanningProgress()
+  progressTimer = window.setInterval(() => {
+    const assistant = messages.value.find((item) => item.id === assistantId)
+    if (!assistant || assistant.status !== 'thinking') return
+    const nextIndex = Math.min((assistant.progressIndex ?? 0) + 1, planningStages.length - 1)
+    assistant.progressIndex = nextIndex
+    assistant.content = `${planningStages[nextIndex]}...`
+  }, 1800)
+}
+
+function stopPlanningProgress() {
+  if (progressTimer !== null) {
+    window.clearInterval(progressTimer)
+    progressTimer = null
   }
 }
 

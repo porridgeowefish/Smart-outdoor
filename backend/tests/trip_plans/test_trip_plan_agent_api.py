@@ -100,6 +100,7 @@ def test_send_followup_message_appends_to_existing_trip_plan_and_returns_candida
     assert len(body["candidate_routes"]) == 3
     assert body["candidate_routes"][0]["rank"] == 1
     assert body["candidate_routes"][0]["route"]["route_id"]
+    assert body["candidate_routes"][0]["route"]["track_preview"]["format"] == "geojson"
     assert body["candidate_routes"][0]["recommendation_reason"]
 
 
@@ -196,6 +197,7 @@ def test_candidate_detail_returns_route_planning_detail_and_evidence(
     detail = detail_response.json()
     assert detail["candidate_id"] == candidate["candidate_id"]
     assert detail["route"]["route_id"] == candidate["route"]["route_id"]
+    assert detail["route"]["track_preview"]["point_count"] >= 2
     assert detail["planning_detail"]["summary"]
     assert detail["planning_detail"]["llm_detail_card"]
     assert detail["evidence"]["weather"]["status"] in {"mocked", "unconfirmed"}

@@ -69,6 +69,9 @@
           </ul>
         </div>
 
+        <button class="mb-3 w-full bg-emerald-500 px-5 py-3.5 text-[14px] font-bold text-white" @click="router.push(`/routes/${snapshot.route.route_id}`)">
+          查看线路详情
+        </button>
         <button class="mb-8 w-full bg-slate-900 px-5 py-3.5 text-[14px] font-bold text-white" @click="router.push('/chat')">
           回到出去走走
         </button>

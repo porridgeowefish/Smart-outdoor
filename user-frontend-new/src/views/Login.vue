@@ -84,7 +84,7 @@ const handleLogin = async () => {
 
   try {
     await login({ username: form.username, password: form.password })
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/chat'
     router.replace(redirect)
   } catch (e: any) {
     error.value = e.message || '登录失败，请稍后重试'

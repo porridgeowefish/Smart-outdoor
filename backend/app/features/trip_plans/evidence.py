@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import logging
+
 from app.features.agent_tools.search import SearchRequest, search_evidence_json
 from app.features.agent_tools.transport import TransportRequest, transport_evidence_json
 from app.features.agent_tools.weather import WeatherRequest, weather_evidence_json
 from app.features.routes.model import RouteAnalysisSnapshot, RouteAsset
 from app.features.routes.router import _route_location
+
+logger = logging.getLogger(__name__)
 
 
 def candidate_evidence(
@@ -12,11 +16,24 @@ def candidate_evidence(
     analysis: RouteAnalysisSnapshot,
     context_state: dict,
 ) -> dict:
-    return {
-        "weather": weather_for_route(route, analysis),
-        "transport": transport_for_route(route, analysis, context_state),
-        "web_evidence": search_for_route(route, analysis, context_state),
-    }
+    weather = _safe_call("weather", lambda: weather_for_route(route, analysis))
+    transport = _safe_call("transport", lambda: transport_for_route(route, analysis, context_state))
+    web_evidence = _safe_call("web_evidence", lambda: search_for_route(route, analysis, context_state))
+    return {"weather": weather, "transport": transport, "web_evidence": web_evidence}
+
+
+def _safe_call(tool_name: str, fn: callable) -> dict:
+    try:
+        return fn()
+    except Exception as exc:
+        logger.exception("Evidence tool %s failed", tool_name)
+        return {
+            "status": "unconfirmed",
+            "provider": "error",
+            "summary": f"{tool_name} 工具调用异常：{exc}",
+            "warnings": [f"{tool_name} 调用异常，{tool_name}信息未确认。"],
+            "raw": {},
+        }
 
 
 def search_for_route(

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
@@ -33,6 +35,8 @@ from app.features.trip_plans.service import (
 )
 from app.features.users.deps import get_current_user
 from app.features.users.model import User
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["trip-plans"])
 
@@ -90,6 +94,15 @@ def post_trip_plan_message(
             content={
                 "code": "TRIP_PLAN_NOT_FOUND",
                 "message": "Trip plan not found",
+            },
+        )
+    except Exception as exc:
+        logger.exception("Agent workflow failed")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "code": "AGENT_ERROR",
+                "message": f"Agent 处理失败：{exc}",
             },
         )
 

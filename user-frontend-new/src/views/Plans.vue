@@ -32,11 +32,12 @@
           class="relative flex cursor-pointer gap-4 border-t border-slate-100 p-4 transition-colors active:bg-slate-50"
           @click="router.push(`/plans/${snapshot.snapshot_id}`)"
         >
-          <div class="relative h-[80px] w-[100px] shrink-0 border border-slate-200/60 bg-slate-100 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05)]">
-            <img v-if="snapshot.route.cover_image_url" :src="snapshot.route.cover_image_url" class="h-full w-full object-cover" alt="" />
-            <div v-else class="flex h-full w-full items-center justify-center bg-gradient-to-br from-emerald-50 to-slate-100 text-[11px] font-black text-emerald-600">
-              {{ formatNumber(snapshot.route.distance_km, 1) }}km
-            </div>
+          <div class="relative h-[80px] w-[100px] shrink-0 overflow-hidden border border-slate-200/60 bg-slate-100 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05)]">
+            <RoutePreviewCard
+              :track-preview="snapshot.route.track_preview"
+              :distance-km="snapshot.route.distance_km"
+              :elevation-gain-m="snapshot.route.elevation_gain_m"
+            />
           </div>
 
           <div class="flex min-w-0 flex-grow flex-col justify-between py-0.5">
@@ -67,6 +68,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { listRoutePlanSnapshots, type RoutePlanSnapshotItem } from '../api'
+import RoutePreviewCard from '../components/RoutePreviewCard.vue'
 
 const router = useRouter()
 const snapshots = ref<RoutePlanSnapshotItem[]>([])

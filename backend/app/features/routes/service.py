@@ -324,6 +324,26 @@ def get_primary_file_for_route(db: Session, route_id: str) -> RouteFile | None:
     )
 
 
+def build_track_preview(
+    analysis: RouteAnalysisSnapshot,
+    *,
+    max_points: int = 80,
+) -> dict | None:
+    """Build a lightweight LineString preview for route cards."""
+    coordinates = (analysis.track_geojson or {}).get("coordinates")
+    if not isinstance(coordinates, list) or len(coordinates) < 2:
+        return None
+    sampled = _sample_coordinates(coordinates, max_points=max_points)
+    if len(sampled) < 2:
+        return None
+    return {
+        "format": "geojson",
+        "coordinate_system": "wgs84",
+        "point_count": len(coordinates),
+        "geojson": {"type": "LineString", "coordinates": sampled},
+    }
+
+
 def display_tags_from_manual_tags(manual_tags: dict, limit: int = 3) -> list[str]:
     """将 manual_tags 扁平化为展示标签列表，默认最多返回 3 个。
 
@@ -331,6 +351,38 @@ def display_tags_from_manual_tags(manual_tags: dict, limit: int = 3) -> list[str
     """
     tags = _flatten_tags(manual_tags)
     return tags[:limit]
+
+
+def _sample_coordinates(coordinates: list, *, max_points: int) -> list[list[float]]:
+    if len(coordinates) <= max_points:
+        return [_normalize_coordinate(item) for item in coordinates if _normalize_coordinate(item)]
+    if max_points < 2:
+        max_points = 2
+    last_index = len(coordinates) - 1
+    sampled: list[list[float]] = []
+    used_indexes: set[int] = set()
+    for index in range(max_points):
+        source_index = round(index * last_index / (max_points - 1))
+        if source_index in used_indexes:
+            continue
+        used_indexes.add(source_index)
+        normalized = _normalize_coordinate(coordinates[source_index])
+        if normalized:
+            sampled.append(normalized)
+    return sampled
+
+
+def _normalize_coordinate(value: object) -> list[float]:
+    if not isinstance(value, list | tuple) or len(value) < 2:
+        return []
+    lon = value[0]
+    lat = value[1]
+    if not isinstance(lon, int | float) or not isinstance(lat, int | float):
+        return []
+    result = [float(lon), float(lat)]
+    if len(value) >= 3 and isinstance(value[2], int | float):
+        result.append(float(value[2]))
+    return result
 
 
 def _is_route_visible_to_user(route: RouteAsset, user: User) -> bool:

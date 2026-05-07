@@ -6,7 +6,11 @@ from app.features.llm.provider import get_llm_provider
 from app.features.llm.schemas import ContextExtractionInput, ResponseGenerationInput
 from app.features.routes.model import RouteAnalysisSnapshot, RouteAsset
 from app.features.routes.router import _route_location
-from app.features.routes.service import display_tags_from_manual_tags, get_latest_analysis_for_route
+from app.features.routes.service import (
+    build_track_preview,
+    display_tags_from_manual_tags,
+    get_latest_analysis_for_route,
+)
 from app.features.trip_plans.events import event, sse_lines
 from app.features.trip_plans.model import (
     AgentRun,
@@ -370,6 +374,7 @@ def _candidate_route_summary(
         elevation_gain_m=analysis.elevation_gain_m,
         cover_image_url=route.cover_image_url,
         display_tags=display_tags_from_manual_tags(route.manual_tags or {}),
+        track_preview=build_track_preview(analysis),
     )
 
 

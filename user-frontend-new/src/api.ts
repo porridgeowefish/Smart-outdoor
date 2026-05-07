@@ -18,6 +18,7 @@ export type RouteListItem = components['schemas']['RouteListItem']
 export type RouteListResponse = components['schemas']['RouteListResponse']
 export type RouteUploadResponse = components['schemas']['RouteUploadResponse']
 export type RouteDetailResponse = components['schemas']['RouteDetailResponse']
+export type RouteTagTaxonomyResponse = components['schemas']['RouteTagTaxonomyResponse']
 export type AbilityProfileResponse = components['schemas']['AbilityProfileResponse']
 export type ActivityTrackItem = components['schemas']['ActivityTrackItem']
 export type ActivityTrackListResponse = components['schemas']['ActivityTrackListResponse']
@@ -131,6 +132,13 @@ export async function getRouteDetail(routeId: string): Promise<RouteDetailRespon
 }
 
 /** 上传线路文件（FormData，不经过 openapi-fetch，手动处理 multipart） */
+export async function getRouteTagTaxonomy(): Promise<RouteTagTaxonomyResponse> {
+  const response = await fetch('/api/routes/tag-taxonomy', { headers: authHeaders() })
+  const body = await parseJson(response)
+  if (!response.ok) throw buildApiError(response.status, body, '????????')
+  return body as RouteTagTaxonomyResponse
+}
+
 export async function uploadRoute(payload: {
   file: File
   coverImage?: File | null

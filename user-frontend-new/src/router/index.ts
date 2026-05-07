@@ -50,7 +50,7 @@ const router = createRouter({
     {
       path: '/',
       component: MainLayout,
-      redirect: '/chat',
+      redirect: '/login',
       children: [
         {
           path: 'chat',
@@ -81,8 +81,13 @@ const router = createRouter({
   ]
 })
 
-// 全局前置守卫：需要认证的页面在未登录时重定向到登录页，并携带原始路径以便登录后回跳
+// 全局前置守卫：
+// 1. 需要认证的页面在未登录时重定向到登录页
+// 2. 已登录用户访问登录页时自动跳转到对话主页
 router.beforeEach((to) => {
+  if (to.path === '/login' && hasAuthToken()) {
+    return '/chat'
+  }
   if (to.meta.requiresAuth && !hasAuthToken()) {
     return { path: '/login', query: { redirect: to.fullPath } }
   }

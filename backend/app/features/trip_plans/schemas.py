@@ -25,6 +25,7 @@ class CandidateRouteSummary(BaseModel):
     elevation_gain_m: float
     cover_image_url: str | None
     display_tags: list[str]
+    track_preview: dict | None = None
 
 
 class CandidateRouteItem(BaseModel):

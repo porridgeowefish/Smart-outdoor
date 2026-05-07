@@ -33,6 +33,7 @@ def test_save_candidate_route_creates_snapshot(
     assert body["source_candidate_id"] == candidate["candidate_id"]
     assert body["continue_trip_plan_id"] == trip_plan_id
     assert body["route"]["route_id"] == candidate["route"]["route_id"]
+    assert body["route"]["track_preview"]["format"] == "geojson"
     assert body["planning_detail"]["summary"]
     assert body["evidence"]["evaluator"]["passed"] is True
 
@@ -94,6 +95,7 @@ def test_snapshot_detail_returns_saved_route_summary_and_evidence(
     body = response.json()
     assert body["snapshot_id"] == snapshot_id
     assert body["route"]["name"] == candidate["route"]["name"]
+    assert body["route"]["track_preview"]["point_count"] >= 2
     assert body["planning_detail"]["summary"]
     assert body["evidence"]["weather"]
 

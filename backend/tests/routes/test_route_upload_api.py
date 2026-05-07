@@ -64,6 +64,21 @@ def test_upload_route_rejects_invalid_manual_tags_json(
     }
 
 
+def test_route_tag_taxonomy_returns_multidimensional_categories(
+    client: TestClient,
+) -> None:
+    response = client.get("/api/routes/tag-taxonomy")
+
+    assert response.status_code == 200
+    categories = {item["key"]: item for item in response.json()["categories"]}
+    assert "supply" in categories
+    assert "terrain" in categories
+    assert "scenery" in categories
+    assert "有小卖部" in categories["supply"]["tags"]
+    assert "台阶路/阶梯路" in categories["terrain"]["tags"]
+    assert "雪山" in categories["scenery"]["tags"]
+
+
 def test_upload_gpx_route_creates_asset_file_and_analysis(
     client: TestClient, auth_headers: dict[str, str]
 ) -> None:
@@ -132,6 +147,47 @@ def test_upload_gpx_route_creates_asset_file_and_analysis(
     assert analysis.track_geojson["coordinates"][0] == [104.0, 30.0, 100.0]
     assert analysis.track_geojson["coordinates"][-1] == [104.002, 30.0, 110.0]
     assert len(analysis.track_geojson["coordinates"]) >= analysis.distance_km * 100
+
+    list_response = client.get("/api/routes", headers=auth_headers)
+    item = next(
+        item for item in list_response.json()["items"] if item["route_id"] == body["route_id"]
+    )
+    assert item["track_preview"]["format"] == "geojson"
+    assert item["track_preview"]["coordinate_system"] == "wgs84"
+    assert item["track_preview"]["point_count"] >= 3
+    assert len(item["track_preview"]["geojson"]["coordinates"]) >= 2
+
+
+def test_upload_route_stores_multidimensional_manual_tags(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    manual_tags = {
+        "supply": ["有小卖部", "有饮用水"],
+        "transport_facility": ["停车场", "自驾友好"],
+        "terrain": ["台阶路/阶梯路", "碎石路/乱石路"],
+        "scenery": ["森林", "溪流"],
+        "audience": ["摄影友好"],
+    }
+
+    response = client.post(
+        "/api/routes/upload",
+        headers=auth_headers,
+        data={
+            "name": "Tagged route",
+            "manual_tags": json.dumps(manual_tags, ensure_ascii=False),
+        },
+        files={"file": ("demo.gpx", VALID_GPX, "application/gpx+xml")},
+    )
+
+    assert response.status_code == 200
+    detail_response = client.get(
+        f"/api/routes/{response.json()['route_id']}",
+        headers=auth_headers,
+    )
+    assert detail_response.status_code == 200
+    detail = detail_response.json()
+    assert detail["manual_tags"] == manual_tags
+    assert "有小卖部" in detail["manual_tags"]["supply"]
 
 
 def test_upload_route_accepts_cover_image(
