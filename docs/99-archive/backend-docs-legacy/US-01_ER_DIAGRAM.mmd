@@ -1,0 +1,185 @@
+﻿erDiagram
+    USERS ||--o{ TRIP_PLANS : owns
+    USERS ||--o{ ROUTE_ASSETS : creates
+    USERS ||--o{ ROUTE_FILES : uploads
+    USERS ||--o{ ROUTE_PLAN_SNAPSHOTS : saves
+    USERS ||--o{ ACTIVITY_TRACKS : uploads
+    USERS ||--o| USER_ABILITY_PROFILES : has
+
+    TRIP_PLANS ||--o{ TRIP_PLAN_MESSAGES : contains
+    TRIP_PLANS ||--o{ AGENT_RUNS : triggers
+    TRIP_PLANS ||--o{ TRIP_PLAN_CANDIDATE_ROUTES : has
+    TRIP_PLANS ||--o{ ROUTE_PLAN_SNAPSHOTS : produces
+
+    AGENT_RUNS ||--o{ TRIP_PLAN_CANDIDATE_ROUTES : recommends
+    AGENT_RUNS ||--o{ TRIP_PLAN_MESSAGES : generates
+
+    ROUTE_ASSETS ||--o{ ROUTE_FILES : has
+    ROUTE_ASSETS ||--o{ ROUTE_ANALYSIS_SNAPSHOTS : analyzed_as
+    ROUTE_ASSETS ||--o{ TRIP_PLAN_CANDIDATE_ROUTES : referenced_by
+    ROUTE_ASSETS ||--o{ ROUTE_PLAN_SNAPSHOTS : saved_as
+
+    ROUTE_FILES ||--o{ ROUTE_ANALYSIS_SNAPSHOTS : produces
+    ROUTE_ANALYSIS_SNAPSHOTS ||--o{ TRIP_PLAN_CANDIDATE_ROUTES : used_by
+    ROUTE_ANALYSIS_SNAPSHOTS ||--o{ ROUTE_PLAN_SNAPSHOTS : frozen_in
+
+    TRIP_PLAN_CANDIDATE_ROUTES ||--o| ROUTE_PLAN_SNAPSHOTS : saved_once_as
+
+    USERS {
+        string id PK
+    }
+
+    TRIP_PLANS {
+        string id PK
+        string user_id FK
+        string title
+        string status
+        text context_summary
+        json context_state
+        datetime created_at
+        datetime updated_at
+        datetime closed_at
+    }
+
+    TRIP_PLAN_MESSAGES {
+        string id PK
+        string trip_plan_id FK
+        string agent_run_id FK
+        string role
+        text content
+        string content_type
+        datetime created_at
+    }
+
+    AGENT_RUNS {
+        string id PK
+        string trip_plan_id FK
+        string trigger_message_id FK
+        string run_status
+        string phase
+        string error_code
+        text error_message
+        datetime started_at
+        datetime completed_at
+        datetime created_at
+        datetime updated_at
+    }
+
+    ROUTE_ASSETS {
+        string id PK
+        string name
+        text description
+        string cover_image_url
+        json manual_tags
+        string source_type
+        string source_name
+        string visibility
+        string status
+        string created_by_user_id FK
+        datetime created_at
+        datetime updated_at
+    }
+
+    ROUTE_FILES {
+        string id PK
+        string route_asset_id FK
+        string file_url
+        string file_type
+        int file_size_bytes
+        string checksum
+        string uploaded_by_user_id FK
+        string parse_status
+        text parse_error
+        datetime created_at
+        datetime updated_at
+    }
+
+    ROUTE_ANALYSIS_SNAPSHOTS {
+        string id PK
+        string route_asset_id FK
+        string route_file_id FK
+        decimal distance_km
+        decimal elevation_gain_m
+        decimal elevation_loss_m
+        decimal elevation_min_m
+        decimal elevation_max_m
+        decimal climb_ratio
+        decimal steep_ratio
+        json start_point
+        json end_point
+        json bounds
+        json center_point
+        json track_geojson
+        json analysis_json
+        datetime created_at
+    }
+
+    TRIP_PLAN_CANDIDATE_ROUTES {
+        string id PK
+        string trip_plan_id FK
+        string agent_run_id FK
+        string route_asset_id FK
+        string route_analysis_snapshot_id FK
+        int rank
+        json advantage_tags
+        text recommendation_reason
+        json score_breakdown
+        datetime created_at
+    }
+
+    ROUTE_PLAN_SNAPSHOTS {
+        string id PK
+        string user_id FK
+        string trip_plan_id FK
+        string candidate_route_id FK "UNIQUE"
+        string route_asset_id FK
+        string route_analysis_snapshot_id FK
+        string title
+        string cover_image_url
+        json route_summary
+        json planning_detail
+        json evidence
+        text share_text
+        text user_note
+        datetime saved_at
+        datetime created_at
+        datetime updated_at
+    }
+
+
+    ACTIVITY_TRACKS {
+        string id PK
+        string user_id FK
+        string file_url
+        string file_type
+        int file_size_bytes
+        string checksum
+        string source_type
+        date activity_date
+        decimal distance_km
+        decimal elevation_gain_m
+        decimal elevation_loss_m
+        decimal elevation_min_m
+        decimal elevation_max_m
+        int duration_seconds
+        int moving_time_seconds
+        json track_geojson
+        json analysis_json
+        datetime created_at
+        datetime updated_at
+    }
+
+    USER_ABILITY_PROFILES {
+        string id PK
+        string user_id FK
+        string level
+        decimal endurance_score
+        decimal climb_score
+        decimal recent_max_distance_km
+        decimal recent_max_elevation_gain_m
+        int activity_count
+        string confidence
+        json generated_from_activity_track_ids
+        datetime created_at
+        datetime updated_at
+    }

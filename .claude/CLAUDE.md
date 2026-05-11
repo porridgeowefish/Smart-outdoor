@@ -1,8 +1,8 @@
-﻿# CLAUDE.md：Smart_outdoor 协作开发规范
+# CLAUDE.md：Smart_outdoor 协作开发规范
 
 ## 项目定位
 
-Smart_outdoor 是一个面向户外徒步/路线规划的 Agent 产品。
+Smart_outdoor 是一个面向户外徒步/线路规划的 Agent 产品。
 
 核心目标：
 
@@ -19,36 +19,58 @@ Smart_outdoor 是一个面向户外徒步/路线规划的 Agent 产品。
 个人中心
 ```
 
-## Claude 工作原则
+## Claude 开工顺序
 
-### 1. 先读设计文档，再编码
-
-编码前必须优先阅读：
+开发前先读：
 
 ```text
-backend/docs/US-01_API_CONTRACT.md
-backend/docs/US-01_DATABASE_DESIGN.md
-backend/docs/US-01_AGENT_WORKFLOW.md
-backend/docs/US-02_PROFILE_AND_ABILITY_DESIGN.md
-backend/docs/US-03_ROUTE_MODULE_DESIGN.md
-backend/docs/MVP_IMPLEMENTATION_SLICES.md
+docs/INDEX.md
+docs/00-product-and-architecture/DOCUMENTATION_STANDARD.md
+AGENTS.md
+```
+
+然后根据任务读取对应迭代目录：
+
+```text
+docs/01-iterations/iteration-01-auth-user/
+docs/01-iterations/iteration-02-route-upload-parser/
+docs/01-iterations/iteration-03-route-list-detail/
+docs/01-iterations/iteration-04-trip-plan-agent-mock/
+docs/01-iterations/iteration-05-snapshot-my-plans/
+docs/01-iterations/iteration-06-ability-profile/
 ```
 
 不得脱离这些文档自行扩展产品范围。
 
-### 2. 切片开发
+## 事实源优先级
 
-必须按用户闭环开发，不按技术层横向铺架构。
+```text
+1. 已实现代码、测试、Pydantic Schema、FastAPI OpenAPI 输出
+2. docs/01-iterations 中当前迭代文档
+3. docs/00-product-and-architecture 中长期架构和 ADR
+4. docs/99-archive/backend-docs-legacy 中历史设计文档
+5. design_doc 中 PRD、图和演示材料
+```
+
+PRD 是产品愿景，不是 MVP 当前实现范围的最高事实源。
+
+## 开发纪律
+
+本项目采用：
+
+```text
+切片开发 + 测试驱动开发 + 契约驱动前后端对接 + 文档驱动开发
+```
 
 实施顺序：
 
 ```text
-Slice 1 Auth + User
-Slice 2 Route Upload + Parser
-Slice 3 Route List + Detail
-Slice 4 TripPlan + Agent Mock
-Slice 5 Snapshot / 我的规划
-Slice 6 Ability Profile
+Iteration 01 Auth + User
+Iteration 02 Route Upload + Parser
+Iteration 03 Route List + Detail
+Iteration 04 TripPlan + Agent Mock
+Iteration 05 Snapshot / 我的规划
+Iteration 06 Ability Profile
 ```
 
 每个 slice 必须满足：
@@ -58,10 +80,13 @@ Slice 6 Ability Profile
 API 可调用
 数据库有数据
 前端能看到最小结果
+契约类型已生成
+mock/real 切换不改页面代码
 没有无用抽象
+文档已同步
 ```
 
-### 3. TDD 优先
+## TDD 优先
 
 每个 slice 先写测试，再写实现。
 
@@ -77,7 +102,7 @@ API 失败路径
 
 不允许先写大量实现，最后再补测试。
 
-### 4. 契约驱动开发
+## 契约驱动开发
 
 所有 API Request / Response 必须使用 Pydantic V2 模型。
 
@@ -87,7 +112,7 @@ API 失败路径
 /openapi.json
 ```
 
-前端必须从 OpenAPI 生成 TypeScript 类型。
+前端必须从 OpenAPI 生成 TypeScript 类型和 API Client。
 
 禁止：
 
@@ -97,7 +122,33 @@ API 失败路径
 mock 数据字段和真实接口字段不一致
 ```
 
-### 5. Mock / Real 单开关切换
+## 文档驱动规则
+
+每轮迭代文档必须按以下结构维护：
+
+```text
+README.md
+USER_STORIES.md
+API_CONTRACT.md
+DATABASE_DESIGN.md
+TEST_PLAN.md
+ACCEPTANCE_CRITERIA.md
+DELIVERY_NOTES.md
+```
+
+文档更新时机：
+
+```text
+开工前：补齐本迭代用户故事、API、测试计划。
+改接口：同步 Pydantic Schema、OpenAPI、API 文档。
+改表结构：同步 ORM model、数据库设计、测试。
+做架构取舍：新增 ADR。
+交付后：更新 DELIVERY_NOTES。
+```
+
+禁止复制长文档制造多份事实源。总览文档只做索引和摘要。
+
+## Mock / Real 单开关切换
 
 前端页面代码不得关心当前是 mock 还是真实后端。
 
@@ -116,21 +167,7 @@ USE_MOCK_AMAP=true
 USE_MOCK_SEARCH=true
 ```
 
-要求：
-
-```text
-mock 和 real 使用同一套 Pydantic / OpenAPI 类型。
-切换 mock/real 只能改环境变量，不能改页面逻辑。
-```
-
-## 技术栈
-
-```text
-后端：FastAPI + Python 3.10+
-前端：React 18 + TypeScript + Vite + Tailwind CSS
-数据库：MVP 可用 SQLite/PostgreSQL，后续可迁移 PostgreSQL
-部署：Docker + Docker Compose
-```
+mock 和 real 必须使用同一套 Pydantic / OpenAPI 类型。
 
 ## 关键业务边界
 
@@ -161,26 +198,6 @@ route_analysis_snapshots 指标字段
 
 前端地图优先使用 `track_geojson`，不要直接解析原始 KML/GPX。
 
-### manual_tags 是补充语义，不是事实证据
-
-`manual_tags` 用于：
-
-```text
-线路展示
-线路筛选
-Agent 偏好召回
-优势标签生成
-```
-
-但不能替代：
-
-```text
-轨迹指标
-天气 API
-交通 API
-外部证据
-```
-
 ## Agent 防幻觉要求
 
 Agent 只能基于以下信息输出：
@@ -209,8 +226,6 @@ Web 搜索明确返回且带 URL 的信息
 绝对安全
 ```
 
-除非证据明确支持，且仍应保守表达。
-
 Agent Workflow 固定为：
 
 ```text
@@ -238,25 +253,15 @@ intent_detection
 不要创建 _v1 / _v2 这类冗余文档。
 ```
 
-允许复用：
-
-```text
-明确低耦合 utils
-明确纯函数
-明确 API 调用资料文档
-```
-
 ## 安全与私有文件
 
 私有密钥文档只允许本地使用：
 
 ```text
-backend/docs/PRIVATE_SECRETS.local.md
+docs/99-archive/backend-docs-legacy/PRIVATE_SECRETS.local.md
 ```
 
 不得在回复、提交信息、Issue、PR 或公开文档中展示真实密钥。
-
-正式建仓后必须加入 `.gitignore`。
 
 ## 完成反馈格式
 

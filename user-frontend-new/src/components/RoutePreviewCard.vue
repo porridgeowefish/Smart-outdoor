@@ -1,6 +1,12 @@
 <template>
   <div class="relative h-full w-full overflow-hidden bg-gradient-to-br from-emerald-50 via-slate-50 to-sky-50" style="border-radius: inherit">
-    <svg class="absolute inset-0 h-full w-full" viewBox="0 0 100 64" preserveAspectRatio="xMidYMid meet">
+    <img
+      v-if="coverImageUrl"
+      :src="coverImageUrl"
+      class="absolute inset-0 h-full w-full object-cover"
+      alt=""
+    />
+    <svg v-else class="absolute inset-0 h-full w-full" viewBox="0 0 100 64" preserveAspectRatio="xMidYMid meet">
       <path
         v-if="previewPath"
         :d="previewPath"
@@ -40,6 +46,7 @@ import { computed } from 'vue'
 import { extractLineCoordinates } from '../utils/routeTrack'
 
 const props = defineProps<{
+  coverImageUrl?: string | null
   trackPreview?: { geojson?: unknown } | null
   distanceKm?: number
   elevationGainM?: number

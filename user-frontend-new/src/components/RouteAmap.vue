@@ -5,10 +5,10 @@
       {{ statusMessage }}
     </div>
     <div v-else-if="!elevationAvailable" class="absolute left-3 bottom-3 bg-white/90 backdrop-blur text-slate-600 text-[11px] px-2 py-1 rounded-full shadow">
-      无坡度数据，使用单色轨迹
+      无海拔数据，使用单色轨迹
     </div>
     <div v-else class="absolute left-3 bottom-3 bg-white/90 backdrop-blur rounded-full shadow px-2 py-1 flex items-center gap-1.5">
-      <span class="text-[10px] text-slate-500 font-medium">坡度</span>
+      <span class="text-[10px] text-slate-500 font-medium">海拔</span>
       <span class="w-16 h-1.5 rounded-full bg-gradient-to-r from-[#22c55e] via-[#eab308] to-[#ef4444]"></span>
     </div>
     <div v-if="mapReady" class="absolute right-3 bottom-3 bg-white/95 backdrop-blur rounded-full shadow p-1 flex items-center gap-1">
@@ -28,7 +28,7 @@
 <script setup lang="ts">
 import AMapLoader from '@amap/amap-jsapi-loader'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
-import { buildSlopeColoredGroups, extractLineCoordinates, hasElevation, toAmapPath } from '../utils/routeTrack'
+import { buildElevationColoredGroups, extractLineCoordinates, hasElevation, toAmapPath } from '../utils/routeTrack'
 
 const props = defineProps<{
   geojson: unknown
@@ -114,7 +114,7 @@ function drawTrack() {
 
   const coordinateSystem = props.coordinateSystem || 'wgs84'
   elevationAvailable.value = hasElevation(points)
-  const groups = buildSlopeColoredGroups(points, coordinateSystem)
+  const groups = buildElevationColoredGroups(points, coordinateSystem)
   if (groups.length === 0) {
     statusMessage.value = '轨迹坐标无效，无法渲染'
     return

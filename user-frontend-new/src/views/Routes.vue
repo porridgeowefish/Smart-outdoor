@@ -3,7 +3,6 @@
     <header class="sticky top-0 z-10 flex h-[44px] shrink-0 items-center justify-between border-b border-slate-100 bg-white px-4 shadow-sm">
       <div class="flex items-center gap-3">
         <h1 class="text-[18px] font-bold text-slate-800">线路</h1>
-        <span class="text-[12px] font-medium text-slate-400">真实数据</span>
       </div>
       <button
         class="flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1.5 text-[12px] font-bold text-emerald-600 transition-colors hover:bg-emerald-100 disabled:opacity-60"
@@ -50,7 +49,7 @@
 
       <div v-else-if="routes.length === 0" class="px-8 py-16 text-center">
         <h3 class="mb-1 text-[16px] font-bold text-slate-800">还没有线路</h3>
-        <p class="text-[13px] text-slate-500">上传 KML、GPX 或 GeoJSON 后，这里会显示数据库里的真实线路。</p>
+        <p class="text-[13px] text-slate-500">上传 KML、GPX 或 GeoJSON 后，这里会显示线路。</p>
       </div>
 
       <div v-else>
@@ -62,6 +61,7 @@
         >
           <div class="relative h-[105px] w-[105px] shrink-0 overflow-hidden rounded-xl bg-slate-100">
             <RoutePreviewCard
+              :cover-image-url="route.cover_image_url"
               :track-preview="route.track_preview"
               :distance-km="route.distance_km"
               :elevation-gain-m="route.elevation_gain_m"

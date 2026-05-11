@@ -1,10 +1,11 @@
 /**
- * 轨迹渲染工具：从 GeoJSON 提取坐标、转换坐标系、按坡度着色。
+ * 轨迹渲染工具：从 GeoJSON 提取坐标、转换坐标系、按海拔或坡度着色。
  *
  * 核心功能：
  * - extractLineCoordinates: 从各种 GeoJSON 结构中提取坐标点
  * - toAmapPath: WGS84 坐标转为高德 GCJ02 坐标
- * - buildSlopeColoredGroups: 按坡度分级着色（绿→红 = 平→陡）
+ * - buildElevationColoredGroups: 按相对海拔分级着色（绿→红 = 低→高）
+ * - buildSlopeColoredGroups: 按坡度分级着色（暂保留，待坡度算法优化后切回）
  */
 
 import { haversineMeters, wgs84ToGcj02, type TrackCoordinate } from './geo'
@@ -25,6 +26,14 @@ const SLOPE_COLORS = [
   '#eab308',  // 10-18%
   '#f97316',  // 18-28%
   '#ef4444',  // > 28% 陡峭
+]
+
+const ELEVATION_COLORS = [
+  '#22c55e',
+  '#84cc16',
+  '#eab308',
+  '#f97316',
+  '#ef4444',
 ]
 
 /**
@@ -102,6 +111,46 @@ export function buildSlopeColoredGroups(points: TrackCoordinate[], coordinateSys
   return groups
 }
 
+/**
+ * 按相对海拔将轨迹分段着色。
+ * 使用当前轨迹自己的最低/最高海拔做归一化，低海拔为绿色，高海拔逐步过渡到红色。
+ */
+export function buildElevationColoredGroups(points: TrackCoordinate[], coordinateSystem: string): ColoredTrackGroup[] {
+  if (points.length < 2) return []
+  const amapPath = toAmapPath(points, coordinateSystem)
+  if (amapPath.length < 2) return []
+
+  const elevations = points
+    .map((point) => point[2])
+    .filter((value): value is number => typeof value === 'number' && Number.isFinite(value))
+  if (elevations.length < 2) return [{ color: ELEVATION_COLORS[0], path: amapPath }]
+
+  const minElevation = Math.min(...elevations)
+  const maxElevation = Math.max(...elevations)
+  const elevationRange = maxElevation - minElevation
+  if (elevationRange <= 0) return [{ color: ELEVATION_COLORS[0], path: amapPath }]
+
+  const groups: ColoredTrackGroup[] = []
+  let current: ColoredTrackGroup | null = null
+
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1]
+    const next = points[index]
+    const color = elevationColor(previous, next, minElevation, elevationRange)
+    const segmentStart = amapPath[index - 1]
+    const segmentEnd = amapPath[index]
+
+    if (!current || current.color !== color) {
+      current = { color, path: [segmentStart, segmentEnd] }
+      groups.push(current)
+    } else {
+      current.path.push(segmentEnd)
+    }
+  }
+
+  return groups
+}
+
 /** 检查轨迹点中是否包含海拔数据 */
 export function hasElevation(points: TrackCoordinate[]) {
   return points.some((point) => typeof point[2] === 'number')
@@ -120,6 +169,24 @@ function slopeColor(previous: TrackCoordinate, next: TrackCoordinate) {
   if (grade < 0.18) return SLOPE_COLORS[2]
   if (grade < 0.28) return SLOPE_COLORS[3]
   return SLOPE_COLORS[4]
+}
+
+function elevationColor(
+  previous: TrackCoordinate,
+  next: TrackCoordinate,
+  minElevation: number,
+  elevationRange: number,
+) {
+  if (typeof previous[2] !== 'number' || typeof next[2] !== 'number') {
+    return ELEVATION_COLORS[0]
+  }
+  const segmentElevation = (previous[2] + next[2]) / 2
+  const ratio = Math.min(1, Math.max(0, (segmentElevation - minElevation) / elevationRange))
+  const colorIndex = Math.min(
+    ELEVATION_COLORS.length - 1,
+    Math.floor(ratio * ELEVATION_COLORS.length),
+  )
+  return ELEVATION_COLORS[colorIndex]
 }
 
 /** 类型守卫：判断值是否为合法的坐标数组 [number, number] */

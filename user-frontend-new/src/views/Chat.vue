@@ -104,22 +104,12 @@
             >
               <div class="relative flex h-[112px] items-center justify-center overflow-hidden bg-slate-100">
                 <RoutePreviewCard
+                  :cover-image-url="candidate.route.cover_image_url"
                   :track-preview="candidate.route.track_preview"
                   :distance-km="candidate.route.distance_km"
                   :elevation-gain-m="candidate.route.elevation_gain_m"
                   show-stats
                 />
-                <div v-if="false" class="relative h-full w-full bg-gradient-to-br from-emerald-50 via-slate-100 to-orange-50">
-                  <svg class="absolute inset-0 h-full w-full" viewBox="0 0 270 112" preserveAspectRatio="none" fill="none">
-                    <path d="M18 82 C58 42 78 88 116 52 S175 26 218 56 S244 74 256 36" stroke="#10b981" stroke-width="5" stroke-linecap="round" />
-                    <path d="M18 82 C58 42 78 88 116 52 S175 26 218 56 S244 74 256 36" stroke="white" stroke-width="2" stroke-linecap="round" stroke-dasharray="8 8" opacity="0.8" />
-                    <circle cx="18" cy="82" r="5" fill="#2563eb" stroke="white" stroke-width="2" />
-                    <circle cx="256" cy="36" r="5" fill="#ef4444" stroke="white" stroke-width="2" />
-                  </svg>
-                  <div class="absolute bottom-2 left-2 rounded-full bg-white/85 px-2 py-1 text-[11px] font-black text-slate-600 shadow-sm">
-                    {{ formatNumber(candidate.route.distance_km, 1) }} km · +{{ formatNumber(candidate.route.elevation_gain_m, 0) }} m
-                  </div>
-                </div>
               </div>
               <div class="p-4">
                 <div class="mb-1.5 flex items-start justify-between gap-2">

@@ -11,11 +11,6 @@
     <div class="relative h-[35%] w-full shrink-0 bg-slate-900">
       <img v-if="snapshot?.route.cover_image_url" :src="snapshot.route.cover_image_url" class="h-full w-full object-cover opacity-75" alt="" />
       <div v-else class="h-full w-full bg-gradient-to-br from-slate-900 via-emerald-900 to-slate-800"></div>
-      <svg class="pointer-events-none absolute inset-0 h-full w-full drop-shadow-lg" viewBox="0 0 400 400" preserveAspectRatio="none">
-        <path d="M 50,300 C 100,280 120,350 200,250 S 280,100 350,150" fill="none" stroke="#3b82f6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-        <circle cx="50" cy="300" r="6" fill="#10b981" stroke="#ffffff" stroke-width="2" />
-        <circle cx="350" cy="150" r="6" fill="#ef4444" stroke="#ffffff" stroke-width="2" />
-      </svg>
       <div class="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent"></div>
     </div>
 

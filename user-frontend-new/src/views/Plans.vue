@@ -34,6 +34,7 @@
         >
           <div class="relative h-[80px] w-[100px] shrink-0 overflow-hidden border border-slate-200/60 bg-slate-100 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05)]">
             <RoutePreviewCard
+              :cover-image-url="snapshot.route.cover_image_url"
               :track-preview="snapshot.route.track_preview"
               :distance-km="snapshot.route.distance_km"
               :elevation-gain-m="snapshot.route.elevation_gain_m"
