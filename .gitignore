@@ -2,6 +2,9 @@
 .env
 backend/.env
 backend/.env.production
+backend/config/*.env
+backend/config/*.local.env
+deploy_cloud.py
 backend/docs/PRIVATE_SECRETS.local.md
 
 # Python
@@ -20,6 +23,7 @@ node_modules/
 
 # Logs
 .logs/
+*.log
 
 # OS
 Thumbs.db
@@ -28,6 +32,10 @@ Thumbs.db
 # Temp
 _screenshot_*.png
 _test_*.py
+openapi.tmp.json
+
+# Local object storage
+backend/storage/
 
 # Deploy
 smart_outdoor_deploy.tar.gz

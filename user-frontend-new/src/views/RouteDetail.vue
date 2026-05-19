@@ -16,8 +16,8 @@
         <span class="animate-spin w-7 h-7 border-2 border-emerald-100 border-t-emerald-500 rounded-full"></span>
       </div>
       <RouteAmap
-        v-else-if="routeData"
-        :geojson="routeData.track.geojson"
+        v-else-if="routeData && mapGeojson"
+        :geojson="mapGeojson"
         :coordinate-system="routeData.track.coordinate_system"
       />
       <div v-else class="w-full h-full flex items-center justify-center bg-slate-200 text-slate-600 text-[13px] px-8 text-center">
@@ -143,7 +143,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import RouteAmap from '../components/RouteAmap.vue'
-import { clearAuthToken, getRouteDetail, type RouteDetailResponse } from '../api'
+import { clearAuthToken, getRouteDetail, getRouteTrack, type RouteDetailResponse } from '../api'
 import { extractLineCoordinates } from '../utils/routeTrack'
 
 const route = useRoute()
@@ -152,6 +152,7 @@ const router = useRouter()
 const loading = ref(true)
 const error = ref('')
 const routeData = ref<RouteDetailResponse | null>(null)
+const fullTrackGeojson = ref<Record<string, unknown> | null>(null)
 
 onMounted(loadDetail)
 
@@ -159,7 +160,15 @@ async function loadDetail() {
   loading.value = true
   error.value = ''
   try {
-    routeData.value = await getRouteDetail(route.params.id as string)
+    const routeId = route.params.id as string
+    routeData.value = await getRouteDetail(routeId)
+    fullTrackGeojson.value = null
+    try {
+      const track = await getRouteTrack(routeId)
+      fullTrackGeojson.value = track.geojson
+    } catch (trackError) {
+      console.warn('Failed to load full track, using preview geojson.', trackError)
+    }
   } catch (e: any) {
     error.value = e.message || '线路详情加载失败'
     if (e.status === 401) {
@@ -170,6 +179,13 @@ async function loadDetail() {
     loading.value = false
   }
 }
+
+const mapGeojson = computed(() => {
+  return fullTrackGeojson.value
+    || routeData.value?.track.geojson
+    || routeData.value?.track_preview?.geojson
+    || null
+})
 
 const difficultyLabel = computed(() => {
   if (!routeData.value) return '标准'
@@ -208,8 +224,8 @@ const displayTags = computed(() => {
 })
 
 const elevationPath = computed(() => {
-  if (!routeData.value) return ''
-  const coordinates = extractLineCoordinates(routeData.value.track.geojson)
+  if (!routeData.value || !mapGeojson.value) return ''
+  const coordinates = extractLineCoordinates(mapGeojson.value)
   const points = coordinates.filter((point) => typeof point[2] === 'number')
   if (points.length < 2) return ''
   const elevations = points.map((point) => point[2] as number)

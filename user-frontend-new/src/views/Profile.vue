@@ -15,7 +15,8 @@
       <div v-else-if="user" class="space-y-6">
         <section class="flex items-center gap-4 border-b border-slate-100 bg-white px-5 py-6 shadow-sm">
           <button
-            class="group relative flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-full border-[3px] border-emerald-50 bg-emerald-100 text-3xl font-bold text-emerald-600 shadow-inner"
+            class="group relative flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-full border-[3px] border-emerald-50 bg-emerald-100 text-3xl font-bold text-emerald-600 shadow-inner disabled:opacity-70"
+            :disabled="avatarUploading"
             @click="triggerAvatarUpload"
           >
             <img v-if="user.avatar_url" :src="user.avatar_url" class="h-full w-full object-cover" alt="avatar" />
@@ -39,6 +40,7 @@
               </button>
             </div>
             <p class="text-[13px] font-medium tracking-wide text-slate-400">ID: {{ user.username }}</p>
+            <p v-if="avatarError" class="mt-2 text-[12px] font-bold text-red-500">{{ avatarError }}</p>
           </div>
         </section>
 
@@ -217,6 +219,7 @@ import {
   getAbilityProfile,
   getMe,
   listActivityTracks,
+  uploadAvatar,
   uploadActivityTrack,
   type AbilityProfileResponse,
   type ActivityTrackItem,
@@ -277,7 +280,9 @@ const router = useRouter()
 const loading = ref(true)
 const updating = ref(false)
 const uploading = ref(false)
+const avatarUploading = ref(false)
 const error = ref('')
+const avatarError = ref('')
 const user = ref<UserPublic | null>(null)
 const abilityProfile = ref<AbilityProfileResponse | null>(null)
 const tracks = ref<ActivityTrackItem[]>([])
@@ -357,14 +362,14 @@ async function onAvatarChange(event: Event) {
   if (!file) return
 
   try {
-    const formData = new FormData()
-    formData.append('file', file)
-    const res = await apiFetch('/api/me/avatar', { method: 'POST', body: formData })
-    if (!res.ok) throw new Error('头像上传失败')
-    user.value = await res.json()
+    avatarUploading.value = true
+    avatarError.value = ''
+    user.value = await uploadAvatar(file)
   } catch (err) {
     console.error(err)
+    avatarError.value = err instanceof Error ? err.message : '头像更新失败'
   } finally {
+    avatarUploading.value = false
     if (fileInput.value) fileInput.value.value = ''
   }
 }

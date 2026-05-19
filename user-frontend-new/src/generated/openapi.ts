@@ -15,7 +15,7 @@ export interface paths {
         put?: never;
         /**
          * Register
-         * @description ע�����û����û����ظ�ʱ���� 409��
+         * @description 注册新用户。用户名重复时返回 409。
          */
         post: operations["register_api_auth_register_post"];
         delete?: never;
@@ -35,9 +35,43 @@ export interface paths {
         put?: never;
         /**
          * Login
-         * @description ��¼��ǩ�� JWT Token��У��ʧ�ܷ��� 401��
+         * @description 登录并签发 JWT Token。校验失败返回 401。
          */
         post: operations["login_api_auth_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/storage/upload-credentials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Upload Credentials */
+        post: operations["create_upload_credentials_api_storage_upload_credentials_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/storage/local-upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Local Upload */
+        put: operations["local_upload_api_storage_local_upload_put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -60,23 +94,6 @@ export interface paths {
         head?: never;
         /** Update Me */
         patch: operations["update_me_api_me_patch"];
-        trace?: never;
-    };
-    "/api/me/avatar": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Upload My Avatar */
-        post: operations["upload_my_avatar_api_me_avatar_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
         trace?: never;
     };
     "/api/me/activity-tracks/upload": {
@@ -139,11 +156,11 @@ export interface paths {
         };
         /**
          * List Routes
-         * @description ��ѯ��·�б��֧�ֹؼ��ʡ��ɼ��ԡ���ǩ�������������Χ���ˡ�
+         * @description 查询线路列表，支持关键词、可见性、标签、距离和爬升范围过滤。
          *
-         *     ���˲��ԣ���ͨ�� DB ��ѯ + �ڴ���˵õ������������
-         *     �����ڴ��жԾ���/����ָ����з�Χ���ˣ���Щָ����� snapshot ���У���
-         *     ����ֶ���ҳ���ء�
+         *     过滤策略：先通过 DB 查询 + 内存过滤得到完整结果集，
+         *     再在内存中对距离/爬升指标进行范围过滤（这些指标存在 snapshot 表中），
+         *     最后手动分页返回。
          */
         get: operations["list_routes_api_routes_get"];
         put?: never;
@@ -165,7 +182,7 @@ export interface paths {
         put?: never;
         /**
          * Upload Route File
-         * @description �ϴ���·�켣�ļ���GPX/KML/GeoJSON������ѡͬʱ�ϴ�����ͼƬ��
+         * @description 完成线路上传：前端已直传文件，后端读取 storage_key 并解析。
          */
         post: operations["upload_route_file_api_routes_upload_post"];
         delete?: never;
@@ -191,6 +208,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/routes/{route_id}/track": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Route Track */
+        get: operations["get_route_track_api_routes__route_id__track_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/routes/{route_id}": {
         parameters: {
             query?: never;
@@ -200,7 +234,7 @@ export interface paths {
         };
         /**
          * Get Route Detail
-         * @description ��ȡ��·���飬����Ԫ���ݡ�����ָ�ꡢ�켣���ݺͲ���Ȩ�ޡ�
+         * @description 获取线路详情，包含元数据、分析指标、轨迹数据和操作权限。
          */
         get: operations["get_route_detail_api_routes__route_id__get"];
         put?: never;
@@ -449,29 +483,6 @@ export interface components {
              */
             source_type: string;
         };
-        /** Body_upload_my_avatar_api_me_avatar_post */
-        Body_upload_my_avatar_api_me_avatar_post: {
-            /** File */
-            file: string;
-        };
-        /** Body_upload_route_file_api_routes_upload_post */
-        Body_upload_route_file_api_routes_upload_post: {
-            /** File */
-            file: string;
-            /** Cover Image */
-            cover_image?: string | null;
-            /** Name */
-            name: string;
-            /** Description */
-            description?: string | null;
-            /**
-             * Visibility
-             * @default private
-             */
-            visibility: string;
-            /** Manual Tags */
-            manual_tags?: string | null;
-        };
         /** CandidateRouteDetailResponse */
         CandidateRouteDetailResponse: {
             /** Candidate Id */
@@ -538,6 +549,26 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** ImageAssetMetadata */
+        ImageAssetMetadata: {
+            /** Storage Provider */
+            storage_provider: string;
+            /** Storage Key */
+            storage_key: string;
+            /** Url */
+            url: string;
+            /** Original Filename */
+            original_filename?: string | null;
+            /**
+             * Processing Status
+             * @default ready
+             */
+            processing_status: string;
+            /** Variants */
+            variants: {
+                [key: string]: components["schemas"]["StorageObjectMetadata"];
+            };
+        };
         /** LoginRequest */
         LoginRequest: {
             /** Username */
@@ -547,7 +578,7 @@ export interface components {
         };
         /**
          * LoginResponse
-         * @description ��¼�ɹ���Ӧ������ JWT Token ���û�������Ϣ��
+         * @description 登录成功响应，包含 JWT Token 和用户公开信息。
          */
         LoginResponse: {
             /** Access Token */
@@ -567,7 +598,7 @@ export interface components {
         };
         /**
          * RegisterRequest
-         * @description ע������nickname δ��ʱ�Զ�ʹ�� username��
+         * @description 注册请求。nickname 未填时自动使用 username。
          */
         RegisterRequest: {
             /** Username */
@@ -652,9 +683,25 @@ export interface components {
                 [key: string]: unknown;
             };
             analysis: components["schemas"]["RouteAnalysisResponse"];
+            track_preview?: components["schemas"]["RouteTrackPreviewResponse"] | null;
             track: components["schemas"]["RouteTrackResponse"];
             primary_file: components["schemas"]["RoutePrimaryFileResponse"];
             actions: components["schemas"]["RouteActionsResponse"];
+        };
+        /** RouteFullTrackResponse */
+        RouteFullTrackResponse: {
+            /** Format */
+            format: string;
+            /** Coordinate System */
+            coordinate_system: string;
+            /** Source */
+            source: string;
+            /** Point Count */
+            point_count: number;
+            /** Geojson */
+            geojson: {
+                [key: string]: unknown;
+            };
         };
         /** RouteListItem */
         RouteListItem: {
@@ -781,14 +828,34 @@ export interface components {
             format: string;
             /** Coordinate System */
             coordinate_system: string;
-            /** Simplified */
-            simplified: boolean;
+            /** Source */
+            source: string;
             /** Point Count */
             point_count: number;
+            /** Track Url */
+            track_url: string;
             /** Geojson */
-            geojson: {
+            geojson?: {
                 [key: string]: unknown;
-            };
+            } | null;
+        };
+        /** RouteUploadRequest */
+        RouteUploadRequest: {
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            /**
+             * Visibility
+             * @default private
+             */
+            visibility: string;
+            /** Manual Tags */
+            manual_tags?: {
+                [key: string]: unknown;
+            } | null;
+            track_file: components["schemas"]["TrackFileMetadata"];
+            cover_image?: components["schemas"]["ImageAssetMetadata"] | null;
         };
         /** RouteUploadResponse */
         RouteUploadResponse: {
@@ -800,6 +867,38 @@ export interface components {
             parse_status: string;
             /** Parse Error */
             parse_error?: string | null;
+        };
+        /** StorageObjectMetadata */
+        StorageObjectMetadata: {
+            /** Storage Key */
+            storage_key: string;
+            /** Url */
+            url: string;
+            /** Width */
+            width?: number | null;
+            /** Height */
+            height?: number | null;
+            /** Content Type */
+            content_type: string;
+            /** Size Bytes */
+            size_bytes: number;
+        };
+        /** TrackFileMetadata */
+        TrackFileMetadata: {
+            /** Storage Provider */
+            storage_provider: string;
+            /** Storage Key */
+            storage_key: string;
+            /** File Url */
+            file_url: string;
+            /** File Type */
+            file_type: string;
+            /** Content Type */
+            content_type: string;
+            /** Size Bytes */
+            size_bytes: number;
+            /** Original Filename */
+            original_filename: string;
         };
         /** TripPlanConversationResponse */
         TripPlanConversationResponse: {
@@ -868,6 +967,39 @@ export interface components {
             /** Created At */
             created_at?: string | null;
         };
+        /** UploadCredentialRequest */
+        UploadCredentialRequest: {
+            /** Asset Type */
+            asset_type: string;
+            /** Variant */
+            variant?: string | null;
+            /** Content Type */
+            content_type: string;
+            /** Original Filename */
+            original_filename: string;
+            /** Size Bytes */
+            size_bytes?: number | null;
+        };
+        /** UploadCredentialResponse */
+        UploadCredentialResponse: {
+            /** Storage Provider */
+            storage_provider: string;
+            /** Storage Key */
+            storage_key: string;
+            /** Upload Url */
+            upload_url: string;
+            /** Public Url */
+            public_url: string;
+            /** Headers */
+            headers: {
+                [key: string]: string;
+            };
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+        };
         /** UserMe */
         UserMe: {
             /** Id */
@@ -878,6 +1010,16 @@ export interface components {
             nickname: string;
             /** Avatar Url */
             avatar_url: string | null;
+            /** Avatar Storage Provider */
+            avatar_storage_provider?: string | null;
+            /** Avatar Storage Key */
+            avatar_storage_key?: string | null;
+            /** Avatar Variants */
+            avatar_variants?: {
+                [key: string]: unknown;
+            } | null;
+            /** Avatar Processing Status */
+            avatar_processing_status?: string | null;
             /** Role */
             role: string;
             /** Status */
@@ -907,8 +1049,7 @@ export interface components {
         UserUpdateRequest: {
             /** Nickname */
             nickname?: string | null;
-            /** Avatar Url */
-            avatar_url?: string | null;
+            avatar?: components["schemas"]["ImageAssetMetadata"] | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -998,6 +1139,74 @@ export interface operations {
             };
         };
     };
+    create_upload_credentials_api_storage_upload_credentials_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UploadCredentialRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadCredentialResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    local_upload_api_storage_local_upload_put: {
+        parameters: {
+            query: {
+                key: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     read_me_api_me_get: {
         parameters: {
             query?: never;
@@ -1041,41 +1250,6 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["UserUpdateRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserMe"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    upload_my_avatar_api_me_avatar_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "multipart/form-data": components["schemas"]["Body_upload_my_avatar_api_me_avatar_post"];
             };
         };
         responses: {
@@ -1249,7 +1423,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["Body_upload_route_file_api_routes_upload_post"];
+                "application/json": components["schemas"]["RouteUploadRequest"];
             };
         };
         responses: {
@@ -1289,6 +1463,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RouteTagTaxonomyResponse"];
+                };
+            };
+        };
+    };
+    get_route_track_api_routes__route_id__track_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                route_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RouteFullTrackResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

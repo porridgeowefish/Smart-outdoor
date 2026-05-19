@@ -26,17 +26,17 @@ from app.features.users.schemas import (
     UserUpdateRequest,
 )
 from app.features.users.service import (
-    InvalidAvatarFileError,
-    update_user_avatar,
+    InvalidAvatarMetadataError,
     update_user_profile,
 )
+from app.features.storage.service import UnsupportedStorageProviderError, get_storage_service
 
 router = APIRouter(tags=["users"])
 
 
 @router.get("/me", response_model=UserMe)
-def read_me(current_user: User = Depends(get_current_user)) -> User:
-    return current_user
+def read_me(current_user: User = Depends(get_current_user)) -> UserMe:
+    return _user_me_response(current_user)
 
 
 @router.patch("/me", response_model=UserMe)
@@ -44,25 +44,13 @@ def update_me(
     payload: UserUpdateRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> User:
-    return update_user_profile(db, current_user, payload)
-
-
-@router.post("/me/avatar", response_model=UserMe)
-async def upload_my_avatar(
-    file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
+) -> UserMe | JSONResponse:
     try:
-        return await update_user_avatar(db, current_user, file)
-    except InvalidAvatarFileError:
+        return _user_me_response(update_user_profile(db, current_user, payload))
+    except InvalidAvatarMetadataError:
         return JSONResponse(
             status_code=400,
-            content={
-                "code": "INVALID_AVATAR_FILE",
-                "message": "仅支持 JPG、PNG、WebP 或 GIF 图片",
-            },
+            content={"code": "INVALID_STORAGE_OBJECT", "message": "Invalid storage object"},
         )
 
 
@@ -145,6 +133,56 @@ def _activity_analysis_response(activity: ActivityTrack) -> ActivityAnalysisResp
         moving_time_seconds=activity.moving_time_seconds,
         analysis_json=activity.analysis_json or {},
     )
+
+
+def _user_me_response(user: User) -> UserMe:
+    avatar_url = _public_avatar_url(user)
+    return UserMe(
+        id=user.id,
+        username=user.username,
+        nickname=user.nickname,
+        avatar_url=avatar_url,
+        avatar_storage_provider=user.avatar_storage_provider,
+        avatar_storage_key=user.avatar_storage_key,
+        avatar_variants=_public_avatar_variants(user, avatar_url),
+        avatar_processing_status=user.avatar_processing_status,
+        role=user.role,
+        status=user.status,
+        created_at=user.created_at,
+        last_login_at=user.last_login_at,
+    )
+
+
+def _public_avatar_url(user: User) -> str | None:
+    if not user.avatar_storage_provider or not user.avatar_storage_key:
+        return user.avatar_url
+    try:
+        return get_storage_service().public_url(
+            key=user.avatar_storage_key,
+            provider=user.avatar_storage_provider,
+        )
+    except UnsupportedStorageProviderError:
+        return user.avatar_url
+
+
+def _public_avatar_variants(user: User, display_url: str | None) -> dict | None:
+    variants = dict(user.avatar_variants or {})
+    for value in variants.values():
+        if not isinstance(value, dict):
+            continue
+        key = value.get("storage_key")
+        if not isinstance(key, str) or not user.avatar_storage_provider:
+            continue
+        try:
+            value["url"] = get_storage_service().public_url(
+                key=key,
+                provider=user.avatar_storage_provider,
+            )
+        except UnsupportedStorageProviderError:
+            pass
+    if display_url and isinstance(variants.get("display"), dict):
+        variants["display"]["url"] = display_url
+    return variants or None
 
 
 def _ability_profile_response(profile: UserAbilityProfile) -> AbilityProfileResponse:

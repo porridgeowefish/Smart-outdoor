@@ -12,12 +12,22 @@ def client(tmp_path: pytest.TempPathFactory) -> TestClient:
     avatar_dir = tmp_path / "avatars"
     route_dir = tmp_path / "routes"
     activity_dir = tmp_path / "activity_tracks"
+    asset_dir = tmp_path / "assets"
     os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
     os.environ["JWT_SECRET_KEY"] = "test-secret-key"
     os.environ["JWT_ACCESS_TOKEN_EXPIRE_MINUTES"] = "30"
     os.environ["AVATAR_STORAGE_DIR"] = str(avatar_dir)
     os.environ["ROUTE_STORAGE_DIR"] = str(route_dir)
     os.environ["ACTIVITY_STORAGE_DIR"] = str(activity_dir)
+    os.environ["ASSET_STORAGE_DIR"] = str(asset_dir)
+    os.environ["STORAGE_PROVIDER"] = "local"
+    os.environ["STORAGE_PUBLIC_BASE_URL"] = "/static/assets"
+    os.environ.pop("COS_SECRET_ID", None)
+    os.environ.pop("COS_SECRET_KEY", None)
+    os.environ.pop("COS_TOKEN", None)
+    os.environ.pop("COS_BUCKET", None)
+    os.environ.pop("COS_REGION", None)
+    os.environ.pop("COS_CDN_BASE_URL", None)
     os.environ["USE_MOCK_AMAP"] = "true"
     os.environ["USE_MOCK_WEATHER"] = "true"
     os.environ["USE_MOCK_SEARCH"] = "true"

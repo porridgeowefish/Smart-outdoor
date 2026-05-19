@@ -57,6 +57,7 @@ Iteration 03 Route List + Detail
 Iteration 04 TripPlan + Agent Workflow
 Iteration 05 Snapshot / 我的规划
 Iteration 06 Ability Profile
+Iteration 07 Object Storage + Image Assets
 ```
 
 ## 历史文档归档映射

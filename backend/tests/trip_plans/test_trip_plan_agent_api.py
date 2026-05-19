@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import json
-
 from fastapi.testclient import TestClient
 
 from tests.routes.test_route_upload_api import VALID_GPX
+from tests.routes.upload_helpers import upload_route_complete
 
 
 def _register_and_login(client: TestClient, username: str) -> dict[str, str]:
@@ -32,20 +31,18 @@ def _upload_public_route(
     name: str,
     manual_tags: dict | None = None,
 ) -> str:
-    response = client.post(
-        "/api/routes/upload",
-        headers=headers,
-        data={
-            "name": name,
-            "description": f"{name} description",
-            "visibility": "public",
-            "manual_tags": json.dumps(manual_tags or {}),
-        },
-        files={"file": (f"{name}.gpx", VALID_GPX, "application/gpx+xml")},
+    body = upload_route_complete(
+        client,
+        headers,
+        name=name,
+        description=f"{name} description",
+        visibility="public",
+        manual_tags=manual_tags or {},
+        content=VALID_GPX,
+        filename=f"{name}.gpx",
     )
-    assert response.status_code == 200
-    assert response.json()["parse_status"] == "parsed"
-    return response.json()["route_id"]
+    assert body["parse_status"] == "parsed"
+    return body["route_id"]
 
 
 def test_send_first_message_creates_trip_plan_and_agent_run(

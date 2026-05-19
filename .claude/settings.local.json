@@ -31,7 +31,16 @@
       "Bash(docker compose *)",
       "Bash(docker stop *)",
       "Bash(docker rm *)",
-      "Bash(\"C:\\\\Users\\\\xmz14_ugn3mh4\\\\anaconda3\\\\envs\\\\real_base\\\\python.exe\" deploy_cloud.py)"
+      "Bash(\"C:\\\\Users\\\\xmz14_ugn3mh4\\\\anaconda3\\\\envs\\\\real_base\\\\python.exe\" deploy_cloud.py)",
+      "Bash(ssh *)",
+      "Bash(xargs grep -l \"http\\\\|api\\\\|client\\\\|request\")",
+      "Bash(C:\\\\Users\\\\xmz14_ugn3mh4\\\\anaconda3\\\\envs\\\\real_base\\\\python.exe test_api_connectivity.py)",
+      "Bash(pushd \"D:\\\\2_Study\\\\Smart_outdoor\\\\backend\")",
+      "Bash(\"C:\\\\Users\\\\xmz14_ugn3mh4\\\\anaconda3\\\\envs\\\\real_base\\\\python.exe\" -c \"from app.features.trip_plans.evidence import candidate_evidence; print\\('import OK'\\)\")",
+      "Bash(\"C:\\\\Users\\\\xmz14_ugn3mh4\\\\anaconda3\\\\envs\\\\real_base\\\\python.exe\" -c \"from app.features.trip_plans.router import router; print\\('router OK'\\)\")",
+      "Bash(\"C:\\\\Users\\\\xmz14_ugn3mh4\\\\anaconda3\\\\envs\\\\real_base\\\\python.exe\" -c \"from app.features.trip_plans.evidence import candidate_evidence; print\\('evidence OK'\\)\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

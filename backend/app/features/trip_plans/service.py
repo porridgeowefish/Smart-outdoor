@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.features.llm.provider import get_llm_provider
 from app.features.llm.schemas import ContextExtractionInput, ResponseGenerationInput
 from app.features.routes.model import RouteAnalysisSnapshot, RouteAsset
-from app.features.routes.router import _route_location
+from app.features.routes.router import _route_cover_url, _route_location
 from app.features.routes.service import (
     build_track_preview,
     display_tags_from_manual_tags,
@@ -372,7 +372,7 @@ def _candidate_route_summary(
         location=_route_location(route.manual_tags or {}, analysis.analysis_json or {}),
         distance_km=analysis.distance_km,
         elevation_gain_m=analysis.elevation_gain_m,
-        cover_image_url=route.cover_image_url,
+        cover_image_url=_route_cover_url(route, preferred="thumbnail"),
         display_tags=display_tags_from_manual_tags(route.manual_tags or {}),
         track_preview=build_track_preview(analysis),
     )

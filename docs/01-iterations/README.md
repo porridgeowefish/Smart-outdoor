@@ -17,6 +17,7 @@ Source of truth: iteration subdirectories define delivery scope.
 | 04 | TripPlan + Agent Mock | [iteration-04-trip-plan-agent-mock](./iteration-04-trip-plan-agent-mock/README.md) |
 | 05 | Snapshot / 我的规划 | [iteration-05-snapshot-my-plans](./iteration-05-snapshot-my-plans/README.md) |
 | 06 | Ability Profile | [iteration-06-ability-profile](./iteration-06-ability-profile/README.md) |
+| 07 | Object Storage + Image Assets | [iteration-07-object-storage-image-assets](./iteration-07-object-storage-image-assets/README.md) |
 
 ## 每轮必备文档
 
@@ -43,4 +44,3 @@ API 可调用
 mock/real 切换不改页面代码
 没有无用抽象
 ```
-

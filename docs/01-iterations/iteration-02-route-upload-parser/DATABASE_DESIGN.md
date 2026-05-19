@@ -5,6 +5,8 @@ Owner: project maintainer
 Last reviewed: 2026-05-08
 Source of truth: ORM model and migrations when introduced.
 
+> Superseded by Iteration 07: 文件存储字段在 Iteration 07 改为 storage provider / storage key / URL metadata 契约，并新增派生 GeoJSON 存储规则。当前文件保留 Iteration 02 历史交付边界。
+
 ## route_assets
 
 线路资产主档。
@@ -79,4 +81,3 @@ created_at
 技术指标不放 route_assets
 解析失败时 route_file.parse_status = failed
 ```
-

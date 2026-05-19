@@ -116,6 +116,58 @@ def run_ssh(
 # 环境文件
 # ---------------------------------------------------------------------------
 
+LLM_API_KEY = "sk-capamwetyjzravoixxlyrianusmcqkumkvacfknmscvepoby"
+LLM_MODEL = "deepseek-ai/DeepSeek-V4-Flash"
+LLM_BASE_URL = "https://api.siliconflow.cn/v1/"
+QWEATHER_KEY = "ef048ac4e8e84540844e7f36da733f76"
+WEATHER_HOST = "p25khw5ygp.re.qweatherapi.com"
+TAVILY_KEY = "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"
+
+PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
+LOCAL_ENV_VALUES = {}
+
+
+def _load_env_file(path: str) -> dict[str, str]:
+    values: dict[str, str] = {}
+    if not os.path.exists(path):
+        return values
+    with open(path, "r", encoding="utf-8") as f:
+        for raw_line in f:
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            name, value = line.split("=", 1)
+            values[name.strip().lstrip("\ufeff")] = value.strip().strip('"').strip("'")
+    return values
+
+
+for env_file in [
+    os.path.join(PROJECT_DIR, "backend", ".env"),
+    os.path.join(PROJECT_DIR, "backend", ".env.production"),
+]:
+    LOCAL_ENV_VALUES.update(_load_env_file(env_file))
+
+
+def _env_value(name: str, default: str = "") -> str:
+    return os.getenv(name) or LOCAL_ENV_VALUES.get(name, default)
+
+
+STORAGE_ENV_KEYS = [
+    "ASSET_STORAGE_DIR",
+    "STORAGE_PROVIDER",
+    "STORAGE_PUBLIC_BASE_URL",
+    "COS_SECRET_ID",
+    "COS_SECRET_KEY",
+    "COS_BUCKET",
+    "COS_REGION",
+    "COS_TOKEN",
+    "COS_CDN_BASE_URL",
+]
+
+STORAGE_ENV = "\n".join(
+    f"{name}={_env_value(name)}" for name in STORAGE_ENV_KEYS if _env_value(name) != ""
+)
+
 ENV_PRODUCTION = f"""\
 DATABASE_URL=postgresql+psycopg://{PG_USER}:{PG_PASSWORD}@postgres:5432/smart_outdoor
 JWT_SECRET_KEY=sk-smart-outdoor-jwt-prod-2026-xyz
@@ -123,10 +175,20 @@ JWT_ACCESS_TOKEN_EXPIRE_MINUTES=60
 AVATAR_STORAGE_DIR=/app/storage/avatars
 ROUTE_STORAGE_DIR=/app/storage/routes
 ACTIVITY_STORAGE_DIR=/app/storage/activity_tracks
+{STORAGE_ENV}
 USE_MOCK_AMAP=false
-USE_MOCK_WEATHER=true
+USE_MOCK_WEATHER=false
+USE_MOCK_SEARCH=false
+USE_MOCK_LLM=false
 AMAP_WEB_SERVICE_KEY={AMAP_KEY}
 AMAP_REVERSE_GEOCODE_URL=https://restapi.amap.com/v3/geocode/regeo
+OPENAI_API_KEY={LLM_API_KEY}
+OPENAI_MODEL={LLM_MODEL}
+OPENAI_BASE_URL={LLM_BASE_URL}
+LLM_TIMEOUT_SECONDS=30
+QWEATHER_API_KEY={QWEATHER_KEY}
+WEATHER_DEVELOPER_HOST={WEATHER_HOST}
+TAVILY_API_KEY={TAVILY_KEY}
 """
 
 COMPOSE_ENV = f"""\

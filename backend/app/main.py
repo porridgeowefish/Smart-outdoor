@@ -15,6 +15,7 @@ from app.core.config import get_settings
 from app.db.init_db import init_db
 from app.features.auth.router import router as auth_router
 from app.features.routes.router import router as routes_router
+from app.features.storage.router import router as storage_router
 from app.features.trip_plans.router import router as trip_plans_router
 from app.features.users.deps import AuthError, unauthorized_response
 from app.features.users.router import router as users_router
@@ -56,7 +57,13 @@ def create_app() -> FastAPI:
         StaticFiles(directory=settings.activity_storage_dir, check_dir=False),
         name="activity-tracks",
     )
+    app.mount(
+        "/static/assets",
+        StaticFiles(directory=settings.asset_storage_dir, check_dir=False),
+        name="assets",
+    )
     app.include_router(auth_router, prefix="/api")
+    app.include_router(storage_router, prefix="/api")
     app.include_router(users_router, prefix="/api")
     app.include_router(routes_router, prefix="/api")
     app.include_router(trip_plans_router, prefix="/api")

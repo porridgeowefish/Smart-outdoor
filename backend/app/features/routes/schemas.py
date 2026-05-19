@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.features.storage.schemas import ImageAssetMetadata
 
 
 class RouteTrackPreviewResponse(BaseModel):
@@ -20,6 +22,29 @@ class RouteTagCategoryResponse(BaseModel):
 
 class RouteTagTaxonomyResponse(BaseModel):
     categories: list[RouteTagCategoryResponse]
+
+
+class TrackFileMetadata(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    storage_provider: str = Field(min_length=1, max_length=32)
+    storage_key: str = Field(min_length=1, max_length=500)
+    file_url: str = Field(min_length=1, max_length=500)
+    file_type: str = Field(min_length=1, max_length=32)
+    content_type: str = Field(min_length=1, max_length=120)
+    size_bytes: int = Field(ge=0)
+    original_filename: str = Field(min_length=1, max_length=255)
+
+
+class RouteUploadRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=120)
+    description: str | None = None
+    visibility: str = Field(default="private", max_length=32)
+    manual_tags: dict | None = None
+    track_file: TrackFileMetadata
+    cover_image: ImageAssetMetadata | None = None
 
 
 class RouteUploadResponse(BaseModel):
@@ -72,7 +97,16 @@ class RouteAnalysisResponse(BaseModel):
 class RouteTrackResponse(BaseModel):
     format: str
     coordinate_system: str
-    simplified: bool
+    source: str
+    point_count: int
+    track_url: str
+    geojson: dict | None = None
+
+
+class RouteFullTrackResponse(BaseModel):
+    format: str
+    coordinate_system: str
+    source: str
     point_count: int
     geojson: dict
 
@@ -101,6 +135,7 @@ class RouteDetailResponse(BaseModel):
     source_name: str | None
     manual_tags: dict
     analysis: RouteAnalysisResponse
+    track_preview: RouteTrackPreviewResponse | None = None
     track: RouteTrackResponse
     primary_file: RoutePrimaryFileResponse
     actions: RouteActionsResponse

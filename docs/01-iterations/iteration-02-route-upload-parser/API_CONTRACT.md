@@ -5,6 +5,8 @@ Owner: project maintainer
 Last reviewed: 2026-05-08
 Source of truth: Pydantic V2 schemas and `/openapi.json`.
 
+> Superseded by Iteration 07: `POST /api/routes/upload` 的 multipart 文件上传契约在 Iteration 07 被直接替换为 JSON metadata complete。当前文件保留 Iteration 02 历史交付边界，不再作为最新上传接口契约。
+
 ## POST /api/routes/upload
 
 用途：上传 KML / GPX / GeoJSON，生成线路资产。

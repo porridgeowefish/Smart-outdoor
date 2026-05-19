@@ -7,17 +7,22 @@ import json
 import uuid
 from pathlib import Path
 
-from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
 from app.features.geo.amap_reverse_geocode import reverse_geocode_wgs84
 from app.features.routes.model import (
     RouteAnalysisSnapshot,
     RouteAsset,
     RouteFile,
 )
+from app.features.routes.schemas import RouteUploadRequest
 from app.features.routes.parser import TrackParseError, parse_track
+from app.features.storage.service import (
+    InvalidStorageObjectError,
+    StorageObjectNotFoundError,
+    get_storage_service,
+    validate_key_for_user,
+)
 from app.features.users.model import User
 
 _SUPPORTED_EXTENSIONS = {
@@ -56,6 +61,16 @@ class InvalidManualTagsError(Exception):
     pass
 
 
+class InvalidStorageMetadataError(Exception):
+    """上传完成 metadata 不合法。"""
+    pass
+
+
+class StorageObjectMissingError(Exception):
+    """storage_key 指向的对象不存在。"""
+    pass
+
+
 class RouteNotFoundError(Exception):
     """线路不存在或当前用户无权访问。"""
     pass
@@ -70,30 +85,34 @@ def detect_file_type(filename: str) -> str:
     return file_type
 
 
-async def upload_route(
+def upload_route(
     db: Session,
     current_user: User,
-    file: UploadFile,
-    name: str,
-    description: str | None,
-    visibility: str,
-    manual_tags_raw: str | None,
-    cover_image: UploadFile | None = None,
+    payload: RouteUploadRequest,
 ) -> tuple[RouteAsset, RouteFile]:
-    """处理线路上传的完整流程：创建资产 → 保存封面 → 保存文件 → 解析轨迹 → 生成快照。
+    """处理线路上传 complete：读取已直传文件 → 解析 → 生成资产和快照。
 
     即使轨迹解析失败，资产和文件记录仍然保留（parse_status="failed"），
     用户可以后续重新上传文件。
     """
-    file_type = detect_file_type(file.filename or "")
-    content = await file.read()
-    manual_tags = _parse_manual_tags(manual_tags_raw)
-    visibility_value = visibility if visibility in {"public", "private"} else "private"
+    file_type = _validate_track_metadata(payload.track_file, current_user)
+    manual_tags = payload.manual_tags or {}
+    if not isinstance(manual_tags, dict):
+        raise InvalidManualTagsError
+    visibility_value = payload.visibility if payload.visibility in {"public", "private"} else "private"
+    storage = get_storage_service()
+    try:
+        content = storage.read_bytes(
+            key=payload.track_file.storage_key,
+            provider=payload.track_file.storage_provider,
+        )
+    except StorageObjectNotFoundError as exc:
+        raise StorageObjectMissingError from exc
 
     # 1. 创建线路资产记录
     route = RouteAsset(
-        name=name,
-        description=description,
+        name=payload.name,
+        description=payload.description,
         manual_tags=manual_tags,
         source_type="user_upload",
         visibility=visibility_value,
@@ -103,28 +122,25 @@ async def upload_route(
     db.add(route)
     db.flush()
 
-    # 2. 可选：保存封面图片
-    if cover_image is not None:
-        cover_content = await cover_image.read()
-        route.cover_image_url = _save_cover_image(
-            route.id,
-            cover_image.filename or "",
-            cover_image.content_type,
-            cover_content,
-        )
+    # 2. 可选：保存前端已上传的封面 metadata
+    if payload.cover_image is not None:
+        _apply_cover_metadata(route, current_user, payload.cover_image)
         db.add(route)
         db.flush()
 
-    # 3. 保存原始轨迹文件到本地存储
+    # 3. 保存原始轨迹文件 metadata
     file_id = str(uuid.uuid4())
-    file_url = _save_route_file(route.id, file_id, file_type, content)
     route_file = RouteFile(
         id=file_id,
         route_asset_id=route.id,
-        file_url=file_url,
+        file_url=payload.track_file.file_url,
         file_type=file_type,
         file_size_bytes=len(content),
         checksum=hashlib.sha256(content).hexdigest(),
+        storage_provider=payload.track_file.storage_provider,
+        storage_key=payload.track_file.storage_key,
+        content_type=payload.track_file.content_type,
+        original_filename=payload.track_file.original_filename,
         uploaded_by_user_id=current_user.id,
         parse_status="pending",
     )
@@ -144,6 +160,27 @@ async def upload_route(
         db.refresh(route_file)
         return route, route_file
 
+    full_geojson_content = json.dumps(analysis.track_geojson, ensure_ascii=False).encode("utf-8")
+    derived_key = f"users/{current_user.id}/routes/{route.id}/derived/full.geojson"
+    stored_full = storage.put_bytes(
+        key=derived_key,
+        content=full_geojson_content,
+        content_type="application/geo+json",
+        provider="local" if storage.provider == "local" else storage.provider,
+    )
+    preview_geojson = build_high_fidelity_preview(analysis.track_geojson)
+    preview_count = len(preview_geojson.get("coordinates") or [])
+    full_count = len(analysis.track_geojson.get("coordinates") or [])
+    analysis_json = _analysis_json_with_location(analysis.analysis_json, analysis.center_point)
+    analysis_json.update(
+        {
+            "preview_algorithm": "douglas_peucker_v1",
+            "preview_tolerance_m": 10,
+            "preview_max_segment_length_m": 150,
+            "preview_point_count": preview_count,
+            "full_point_count": full_count,
+        }
+    )
     snapshot = RouteAnalysisSnapshot(
         route_asset_id=route.id,
         route_file_id=route_file.id,
@@ -158,8 +195,15 @@ async def upload_route(
         end_point=analysis.end_point,
         bounds=analysis.bounds,
         center_point=analysis.center_point,
-        track_geojson=analysis.track_geojson,
-        analysis_json=_analysis_json_with_location(analysis.analysis_json, analysis.center_point),
+        track_geojson=preview_geojson,
+        track_preview_geojson=preview_geojson,
+        track_preview_point_count=preview_count,
+        track_geojson_storage_provider=stored_full.provider,
+        track_geojson_storage_key=stored_full.key,
+        track_geojson_url=stored_full.url,
+        track_geojson_point_count=full_count,
+        track_geojson_size_bytes=stored_full.size_bytes,
+        analysis_json=analysis_json,
     )
     route_file.parse_status = "parsed"
     route_file.parse_error = None
@@ -169,6 +213,40 @@ async def upload_route(
     db.refresh(route)
     db.refresh(route_file)
     return route, route_file
+
+
+def _validate_track_metadata(track_file, current_user: User) -> str:
+    try:
+        validate_key_for_user(key=track_file.storage_key, user_id=current_user.id)
+    except InvalidStorageObjectError as exc:
+        raise InvalidStorageMetadataError from exc
+    detected = detect_file_type(track_file.original_filename)
+    if detected != track_file.file_type:
+        raise UnsupportedRouteFileTypeError
+    return detected
+
+
+def _apply_cover_metadata(route: RouteAsset, current_user: User, cover) -> None:
+    variants = cover.variants
+    large = variants.get("large")
+    if large is None:
+        raise InvalidStorageMetadataError
+    try:
+        validate_key_for_user(key=cover.storage_key, user_id=current_user.id)
+        for variant in variants.values():
+            validate_key_for_user(key=variant.storage_key, user_id=current_user.id)
+    except InvalidStorageObjectError as exc:
+        raise InvalidStorageMetadataError from exc
+    if cover.storage_key != large.storage_key or cover.url != large.url:
+        raise InvalidStorageMetadataError
+    route.cover_image_url = large.url
+    route.cover_storage_provider = cover.storage_provider
+    route.cover_storage_key = large.storage_key
+    route.cover_image_variants = {
+        key: value.model_dump() for key, value in variants.items()
+    }
+    route.cover_original_filename = cover.original_filename
+    route.cover_processing_status = cover.processing_status
 
 
 def _analysis_json_with_location(analysis_json: dict, center_point: dict) -> dict:
@@ -196,39 +274,6 @@ def _parse_manual_tags(raw: str | None) -> dict:
     if not isinstance(parsed, dict):
         raise InvalidManualTagsError
     return parsed
-
-
-def _save_route_file(route_id: str, file_id: str, file_type: str, content: bytes) -> str:
-    """保存轨迹文件到本地 storage 目录，返回 URL 路径。"""
-    extension = ".geojson" if file_type == "geojson" else f".{file_type}"
-    storage_root = Path(get_settings().route_storage_dir)
-    route_dir = storage_root / route_id
-    route_dir.mkdir(parents=True, exist_ok=True)
-    file_path = route_dir / f"{file_id}{extension}"
-    file_path.write_bytes(content)
-    return f"/static/routes/{route_id}/{file_id}{extension}"
-
-
-def _save_cover_image(
-    route_id: str, filename: str, content_type: str | None, content: bytes
-) -> str:
-    """保存封面图片，校验格式和 Content-Type。返回 URL 路径。"""
-    extension = Path(filename).suffix.lower()
-    normalized_extension = _SUPPORTED_COVER_EXTENSIONS.get(extension)
-    if (
-        normalized_extension is None
-        or content_type not in _SUPPORTED_COVER_CONTENT_TYPES
-        or not content
-    ):
-        raise UnsupportedCoverImageTypeError
-
-    storage_root = Path(get_settings().route_storage_dir)
-    cover_dir = storage_root / route_id / "covers"
-    cover_dir.mkdir(parents=True, exist_ok=True)
-    cover_id = str(uuid.uuid4())
-    file_path = cover_dir / f"{cover_id}.{normalized_extension}"
-    file_path.write_bytes(content)
-    return f"/static/routes/{route_id}/covers/{cover_id}.{normalized_extension}"
 
 
 def list_visible_routes(
@@ -324,24 +369,47 @@ def get_primary_file_for_route(db: Session, route_id: str) -> RouteFile | None:
     )
 
 
-def build_track_preview(
-    analysis: RouteAnalysisSnapshot,
-    *,
-    max_points: int = 80,
-) -> dict | None:
-    """Build a lightweight LineString preview for route cards."""
-    coordinates = (analysis.track_geojson or {}).get("coordinates")
+def get_full_track_geojson(analysis: RouteAnalysisSnapshot) -> dict:
+    if analysis.track_geojson_storage_key:
+        storage = get_storage_service()
+        try:
+            content = storage.read_bytes(
+                key=analysis.track_geojson_storage_key,
+                provider=analysis.track_geojson_storage_provider,
+            )
+        except StorageObjectNotFoundError as exc:
+            raise StorageObjectMissingError from exc
+        return json.loads(content.decode("utf-8"))
+    return analysis.track_geojson or {}
+
+
+def build_track_preview(analysis: RouteAnalysisSnapshot) -> dict | None:
+    """Build a high-fidelity preview for route cards."""
+    source = analysis.track_preview_geojson or analysis.track_geojson or {}
+    coordinates = source.get("coordinates")
     if not isinstance(coordinates, list) or len(coordinates) < 2:
         return None
-    sampled = _sample_coordinates(coordinates, max_points=max_points)
-    if len(sampled) < 2:
+    normalized = [_normalize_coordinate(item) for item in coordinates]
+    normalized = [item for item in normalized if item]
+    if len(normalized) < 2:
         return None
     return {
         "format": "geojson",
         "coordinate_system": "wgs84",
         "point_count": len(coordinates),
-        "geojson": {"type": "LineString", "coordinates": sampled},
+        "geojson": {"type": "LineString", "coordinates": normalized},
     }
+
+
+def build_high_fidelity_preview(track_geojson: dict) -> dict:
+    coordinates = track_geojson.get("coordinates")
+    if not isinstance(coordinates, list) or len(coordinates) < 3:
+        return track_geojson
+    normalized = [_normalize_coordinate(item) for item in coordinates]
+    normalized = [item for item in normalized if item]
+    simplified = _douglas_peucker(normalized, tolerance_m=10.0)
+    protected = _protect_max_segment_length(simplified, max_segment_length_m=150.0)
+    return {"type": "LineString", "coordinates": protected}
 
 
 def display_tags_from_manual_tags(manual_tags: dict, limit: int = 3) -> list[str]:
@@ -370,6 +438,79 @@ def _sample_coordinates(coordinates: list, *, max_points: int) -> list[list[floa
         if normalized:
             sampled.append(normalized)
     return sampled
+
+
+def _douglas_peucker(points: list[list[float]], *, tolerance_m: float) -> list[list[float]]:
+    if len(points) <= 2:
+        return points
+    max_distance = -1.0
+    index = 0
+    start = points[0]
+    end = points[-1]
+    for current_index, point in enumerate(points[1:-1], start=1):
+        distance = _point_to_segment_distance_m(point, start, end)
+        if distance > max_distance:
+            index = current_index
+            max_distance = distance
+    if max_distance > tolerance_m:
+        left = _douglas_peucker(points[: index + 1], tolerance_m=tolerance_m)
+        right = _douglas_peucker(points[index:], tolerance_m=tolerance_m)
+        return left[:-1] + right
+    return [start, end]
+
+
+def _protect_max_segment_length(
+    points: list[list[float]], *, max_segment_length_m: float
+) -> list[list[float]]:
+    if len(points) < 2:
+        return points
+    result = [points[0]]
+    for start, end in zip(points, points[1:]):
+        distance = _distance_m(start, end)
+        steps = max(1, int(distance // max_segment_length_m) + (1 if distance % max_segment_length_m else 0))
+        for step in range(1, steps):
+            ratio = step / steps
+            result.append(_interpolate_coordinate(start, end, ratio))
+        result.append(end)
+    return result
+
+
+def _point_to_segment_distance_m(point: list[float], start: list[float], end: list[float]) -> float:
+    px, py = _project_m(point, start)
+    sx, sy = 0.0, 0.0
+    ex, ey = _project_m(end, start)
+    dx = ex - sx
+    dy = ey - sy
+    if dx == 0 and dy == 0:
+        return (px**2 + py**2) ** 0.5
+    t = max(0.0, min(1.0, ((px - sx) * dx + (py - sy) * dy) / (dx * dx + dy * dy)))
+    nearest_x = sx + t * dx
+    nearest_y = sy + t * dy
+    return ((px - nearest_x) ** 2 + (py - nearest_y) ** 2) ** 0.5
+
+
+def _project_m(point: list[float], origin: list[float]) -> tuple[float, float]:
+    import math
+
+    earth_radius_m = 6371008.8
+    lon = math.radians(point[0])
+    lat = math.radians(point[1])
+    origin_lon = math.radians(origin[0])
+    origin_lat = math.radians(origin[1])
+    x = (lon - origin_lon) * math.cos((lat + origin_lat) / 2) * earth_radius_m
+    y = (lat - origin_lat) * earth_radius_m
+    return x, y
+
+
+def _distance_m(start: list[float], end: list[float]) -> float:
+    sx, sy = _project_m(start, start)
+    ex, ey = _project_m(end, start)
+    return ((ex - sx) ** 2 + (ey - sy) ** 2) ** 0.5
+
+
+def _interpolate_coordinate(start: list[float], end: list[float], ratio: float) -> list[float]:
+    length = min(len(start), len(end))
+    return [float(start[index]) + (float(end[index]) - float(start[index])) * ratio for index in range(length)]
 
 
 def _normalize_coordinate(value: object) -> list[float]:

@@ -36,6 +36,11 @@ class RouteAsset(Base):
     name: Mapped[str] = mapped_column(String(120))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     cover_image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    cover_storage_provider: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    cover_storage_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    cover_image_variants: Mapped[dict] = mapped_column(JSON, default=dict)
+    cover_original_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    cover_processing_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     manual_tags: Mapped[dict] = mapped_column(JSON, default=dict)
     source_type: Mapped[str] = mapped_column(String(32), default="user_upload")
     source_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
@@ -65,6 +70,10 @@ class RouteFile(Base):
     file_type: Mapped[str] = mapped_column(String(32))  # gpx / kml / geojson
     file_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     checksum: Mapped[str | None] = mapped_column(String(64), nullable=True)  # SHA-256
+    storage_provider: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    storage_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    content_type: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    original_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
     uploaded_by_user_id: Mapped[str] = mapped_column(String(36), index=True)
     parse_status: Mapped[str] = mapped_column(String(32), default="pending")
     parse_error: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -103,5 +112,12 @@ class RouteAnalysisSnapshot(Base):
     bounds: Mapped[dict] = mapped_column(JSON)  # {"min_lon", "min_lat", "max_lon", "max_lat"}
     center_point: Mapped[dict] = mapped_column(JSON)
     track_geojson: Mapped[dict] = mapped_column(JSON)  # 简化后的 LineString GeoJSON，用于前端渲染
+    track_preview_geojson: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    track_preview_point_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    track_geojson_storage_provider: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    track_geojson_storage_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    track_geojson_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    track_geojson_point_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    track_geojson_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     analysis_json: Mapped[dict] = mapped_column(JSON, default=dict)  # 扩展分析数据（如点数统计）
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utc_now)

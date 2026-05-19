@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import json
-
 from fastapi.testclient import TestClient
 
+from tests.routes.upload_helpers import image_asset, post_route_complete, upload_route_complete
 
 VALID_GPX = b"""<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="test">
@@ -20,11 +19,7 @@ VALID_GPX = b"""<?xml version="1.0" encoding="UTF-8"?>
 
 
 def test_upload_route_requires_authorization(client: TestClient) -> None:
-    response = client.post(
-        "/api/routes/upload",
-        data={"name": "Demo route"},
-        files={"file": ("demo.gpx", VALID_GPX, "application/gpx+xml")},
-    )
+    response = client.post("/api/routes/upload", json={})
 
     assert response.status_code == 401
     assert response.json()["code"] == "UNAUTHORIZED"
@@ -33,11 +28,13 @@ def test_upload_route_requires_authorization(client: TestClient) -> None:
 def test_upload_route_rejects_unsupported_file_type(
     client: TestClient, auth_headers: dict[str, str]
 ) -> None:
-    response = client.post(
-        "/api/routes/upload",
-        headers=auth_headers,
-        data={"name": "Demo route"},
-        files={"file": ("demo.txt", b"not a track", "text/plain")},
+    response = post_route_complete(
+        client,
+        auth_headers,
+        name="Demo route",
+        content=b"not a track",
+        filename="demo.txt",
+        content_type="text/plain",
     )
 
     assert response.status_code == 400
@@ -47,21 +44,18 @@ def test_upload_route_rejects_unsupported_file_type(
     }
 
 
-def test_upload_route_rejects_invalid_manual_tags_json(
+def test_upload_route_rejects_invalid_manual_tags_payload(
     client: TestClient, auth_headers: dict[str, str]
 ) -> None:
-    response = client.post(
-        "/api/routes/upload",
-        headers=auth_headers,
-        data={"name": "Demo route", "manual_tags": "{invalid-json"},
-        files={"file": ("demo.gpx", VALID_GPX, "application/gpx+xml")},
+    response = post_route_complete(
+        client,
+        auth_headers,
+        name="Demo route",
+        content=VALID_GPX,
+        manual_tags="not-a-dict",  # type: ignore[arg-type]
     )
 
-    assert response.status_code == 400
-    assert response.json() == {
-        "code": "INVALID_MANUAL_TAGS",
-        "message": "manual_tags must be a JSON object",
-    }
+    assert response.status_code == 422
 
 
 def test_route_tag_taxonomy_returns_multidimensional_categories(
@@ -86,20 +80,16 @@ def test_upload_gpx_route_creates_asset_file_and_analysis(
         "transport": ["self-drive friendly"],
         "scenery": ["forest", "river"],
     }
-    response = client.post(
-        "/api/routes/upload",
-        headers=auth_headers,
-        data={
-            "name": "Demo GPX route",
-            "description": "A short demo route",
-            "visibility": "private",
-            "manual_tags": json.dumps(manual_tags),
-        },
-        files={"file": ("demo.gpx", VALID_GPX, "application/gpx+xml")},
+    body = upload_route_complete(
+        client,
+        auth_headers,
+        name="Demo GPX route",
+        description="A short demo route",
+        visibility="private",
+        manual_tags=manual_tags,
+        content=VALID_GPX,
     )
 
-    assert response.status_code == 200
-    body = response.json()
     assert body["route_id"]
     assert body["file_id"]
     assert body["parse_status"] == "parsed"
@@ -135,6 +125,10 @@ def test_upload_gpx_route_creates_asset_file_and_analysis(
     assert route_file.file_type == "gpx"
     assert route_file.parse_status == "parsed"
     assert route_file.file_url.endswith(".gpx")
+    assert route_file.storage_provider == "local"
+    assert route_file.storage_key
+    assert route_file.content_type == "application/gpx+xml"
+    assert route_file.original_filename == "demo.gpx"
 
     assert analysis.distance_km > 0
     assert analysis.elevation_gain_m == 15
@@ -143,10 +137,12 @@ def test_upload_gpx_route_creates_asset_file_and_analysis(
     assert analysis.elevation_max_m == 115
     assert analysis.start_point == {"lon": 104.0, "lat": 30.0, "ele": 100.0}
     assert analysis.end_point == {"lon": 104.002, "lat": 30.0, "ele": 110.0}
-    assert analysis.track_geojson["type"] == "LineString"
-    assert analysis.track_geojson["coordinates"][0] == [104.0, 30.0, 100.0]
-    assert analysis.track_geojson["coordinates"][-1] == [104.002, 30.0, 110.0]
-    assert len(analysis.track_geojson["coordinates"]) >= analysis.distance_km * 100
+    assert analysis.track_preview_geojson["type"] == "LineString"
+    assert analysis.track_preview_geojson["coordinates"][0] == [104.0, 30.0, 100.0]
+    assert analysis.track_preview_geojson["coordinates"][-1] == [104.002, 30.0, 110.0]
+    assert analysis.track_geojson_storage_key
+    assert analysis.track_geojson_point_count >= analysis.distance_km * 100
+    assert analysis.analysis_json["preview_tolerance_m"] == 10
 
     list_response = client.get("/api/routes", headers=auth_headers)
     item = next(
@@ -169,19 +165,15 @@ def test_upload_route_stores_multidimensional_manual_tags(
         "audience": ["摄影友好"],
     }
 
-    response = client.post(
-        "/api/routes/upload",
-        headers=auth_headers,
-        data={
-            "name": "Tagged route",
-            "manual_tags": json.dumps(manual_tags, ensure_ascii=False),
-        },
-        files={"file": ("demo.gpx", VALID_GPX, "application/gpx+xml")},
+    body = upload_route_complete(
+        client,
+        auth_headers,
+        name="Tagged route",
+        manual_tags=manual_tags,
+        content=VALID_GPX,
     )
-
-    assert response.status_code == 200
     detail_response = client.get(
-        f"/api/routes/{response.json()['route_id']}",
+        f"/api/routes/{body['route_id']}",
         headers=auth_headers,
     )
     assert detail_response.status_code == 200
@@ -193,31 +185,38 @@ def test_upload_route_stores_multidimensional_manual_tags(
 def test_upload_route_accepts_cover_image(
     client: TestClient, auth_headers: dict[str, str]
 ) -> None:
-    response = client.post(
-        "/api/routes/upload",
-        headers=auth_headers,
-        data={"name": "Route with cover"},
-        files={
-            "file": ("demo.gpx", VALID_GPX, "application/gpx+xml"),
-            "cover_image": ("cover.jpg", b"\xff\xd8\xff\xe0fakejpg", "image/jpeg"),
+    cover = image_asset(
+        client,
+        auth_headers,
+        asset_type="route_cover",
+        original_filename="cover.jpg",
+        variants={
+            "large": (b"large-webp", 1280, 720),
+            "thumbnail": (b"thumb-webp", 480, 270),
         },
     )
-
-    assert response.status_code == 200
+    body = upload_route_complete(
+        client,
+        auth_headers,
+        name="Route with cover",
+        content=VALID_GPX,
+        cover_image=cover,
+    )
 
     from app.db.session import SessionLocal
     from app.features.routes.model import RouteAsset
 
     db = SessionLocal()
     try:
-        route = db.get(RouteAsset, response.json()["route_id"])
+        route = db.get(RouteAsset, body["route_id"])
     finally:
         db.close()
 
     assert route is not None
     assert route.cover_image_url is not None
-    assert route.cover_image_url.startswith("/static/routes/")
-    assert route.cover_image_url.endswith(".jpg")
+    assert route.cover_image_url.startswith("/static/assets/")
+    assert route.cover_image_url.endswith(".webp")
+    assert route.cover_image_variants["thumbnail"]["url"].endswith(".webp")
 
 
 def test_upload_route_stores_reverse_geocoded_location(
@@ -238,16 +237,14 @@ def test_upload_route_stores_reverse_geocoded_location(
         },
     )
 
-    response = client.post(
-        "/api/routes/upload",
-        headers=auth_headers,
-        data={"name": "Route with location"},
-        files={"file": ("demo.gpx", VALID_GPX, "application/gpx+xml")},
+    body = upload_route_complete(
+        client,
+        auth_headers,
+        name="Route with location",
+        content=VALID_GPX,
     )
-
-    assert response.status_code == 200
     list_response = client.get("/api/routes", headers=auth_headers)
-    route_id = response.json()["route_id"]
+    route_id = body["route_id"]
     item = next(
         item for item in list_response.json()["items"] if item["route_id"] == route_id
     )
@@ -257,41 +254,41 @@ def test_upload_route_stores_reverse_geocoded_location(
 def test_upload_route_rejects_non_image_cover(
     client: TestClient, auth_headers: dict[str, str]
 ) -> None:
-    response = client.post(
-        "/api/routes/upload",
-        headers=auth_headers,
-        data={"name": "Route with bad cover"},
-        files={
-            "file": ("demo.gpx", VALID_GPX, "application/gpx+xml"),
-            "cover_image": ("cover.txt", b"not image", "text/plain"),
+    response = post_route_complete(
+        client,
+        auth_headers,
+        name="Route with bad cover",
+        content=VALID_GPX,
+        cover_image={
+            "storage_provider": "local",
+            "storage_key": "not-owned/cover.webp",
+            "url": "/static/assets/not-owned/cover.webp",
+            "original_filename": "cover.txt",
+            "processing_status": "ready",
+            "variants": {},
         },
     )
 
     assert response.status_code == 400
-    assert response.json() == {
-        "code": "UNSUPPORTED_COVER_IMAGE_TYPE",
-        "message": "Only JPEG, PNG, and WebP cover images are supported",
-    }
+    assert response.json()["code"] == "INVALID_STORAGE_OBJECT"
 
 
 def test_upload_route_defaults_to_private_visibility(
     client: TestClient, auth_headers: dict[str, str]
 ) -> None:
-    response = client.post(
-        "/api/routes/upload",
-        headers=auth_headers,
-        data={"name": "Default private route"},
-        files={"file": ("demo.gpx", VALID_GPX, "application/gpx+xml")},
+    body = upload_route_complete(
+        client,
+        auth_headers,
+        name="Default private route",
+        content=VALID_GPX,
     )
-
-    assert response.status_code == 200
 
     from app.db.session import SessionLocal
     from app.features.routes.model import RouteAsset
 
     db = SessionLocal()
     try:
-        route = db.get(RouteAsset, response.json()["route_id"])
+        route = db.get(RouteAsset, body["route_id"])
     finally:
         db.close()
 
@@ -302,11 +299,13 @@ def test_upload_route_defaults_to_private_visibility(
 def test_upload_malformed_track_marks_file_failed(
     client: TestClient, auth_headers: dict[str, str]
 ) -> None:
-    response = client.post(
-        "/api/routes/upload",
-        headers=auth_headers,
-        data={"name": "Broken route"},
-        files={"file": ("broken.gpx", b"<gpx><broken>", "application/gpx+xml")},
+    response = post_route_complete(
+        client,
+        auth_headers,
+        name="Broken route",
+        filename="broken.gpx",
+        content=b"<gpx><broken>",
+        content_type="application/gpx+xml",
     )
 
     assert response.status_code == 200

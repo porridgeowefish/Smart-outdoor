@@ -87,6 +87,19 @@ POST /api/me/activity-tracks/upload
 GET /api/me/ability-profile
 ```
 
+### Iteration 07 Object Storage + Image Assets
+
+引入统一 StorageService，让头像、路线封面和路线原始轨迹文件通过 local / object storage provider 保存，并向前端返回稳定 URL。图片只保留处理后版本，不保留上传原图；轨迹原始文件完整保存。
+
+关键接口：
+
+```text
+PATCH /api/me
+POST /api/routes/upload
+GET /api/routes
+GET /api/routes/{route_id}
+```
+
 ## 每轮完成定义
 
 ```text
@@ -99,4 +112,3 @@ mock/real 切换不改页面代码
 没有无用抽象
 文档已同步
 ```
-

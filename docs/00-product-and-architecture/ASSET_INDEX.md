@@ -48,3 +48,12 @@ Source of truth: this file indexes migrated product and architecture assets; ori
 
 Markdown 文档引用原始图片，不复制二进制文件。后续如果需要发布独立文档站，再把图片迁入 `docs/00-product-and-architecture/assets/`。
 
+## 文件资产存储迭代
+
+头像、路线封面和路线原始轨迹文件的 URL 化与对象存储改造放在：
+
+```text
+docs/01-iterations/iteration-07-object-storage-image-assets/
+```
+
+该迭代文档承接 [FUTURE_PLANNING.md](./FUTURE_PLANNING.md) 中的 `Object Storage + Image Assets` 规划。长期领域边界仍以 [DOMAIN_MODEL.md](./DOMAIN_MODEL.md) 和 [DATA_MODEL.md](./DATA_MODEL.md) 为准。

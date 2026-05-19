@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import json
-
 from fastapi.testclient import TestClient
 
 from tests.routes.test_route_upload_api import VALID_GPX
+from tests.routes.upload_helpers import upload_route_complete
 
 
 def _register_and_login(client: TestClient, username: str) -> dict[str, str]:
@@ -33,20 +32,18 @@ def _upload_route(
     visibility: str = "private",
     manual_tags: dict | None = None,
 ) -> str:
-    response = client.post(
-        "/api/routes/upload",
-        headers=headers,
-        data={
-            "name": name,
-            "description": f"{name} description",
-            "visibility": visibility,
-            "manual_tags": json.dumps(manual_tags or {}),
-        },
-        files={"file": (f"{name}.gpx", VALID_GPX, "application/gpx+xml")},
+    body = upload_route_complete(
+        client,
+        headers,
+        name=name,
+        description=f"{name} description",
+        visibility=visibility,
+        manual_tags=manual_tags or {},
+        content=VALID_GPX,
+        filename=f"{name}.gpx",
     )
-    assert response.status_code == 200
-    assert response.json()["parse_status"] == "parsed"
-    return response.json()["route_id"]
+    assert body["parse_status"] == "parsed"
+    return body["route_id"]
 
 
 def test_list_routes_requires_authorization(client: TestClient) -> None:
@@ -143,10 +140,14 @@ def test_get_route_detail_returns_analysis_track_and_primary_file(
     assert data["location"] == "待识别"
     assert data["analysis"]["distance_km"] > 0
     assert data["analysis"]["elevation_gain_m"] == 15
+    assert data["track_preview"]["format"] == "geojson"
     assert data["track"]["format"] == "geojson"
     assert data["track"]["coordinate_system"] == "wgs84"
-    assert data["track"]["geojson"]["type"] == "LineString"
-    assert data["track"]["point_count"] >= data["analysis"]["distance_km"] * 100
+    assert data["track"]["track_url"] == f"/api/routes/{route_id}/track"
+    track_response = client.get(data["track"]["track_url"], headers=auth_headers)
+    assert track_response.status_code == 200
+    assert track_response.json()["geojson"]["type"] == "LineString"
+    assert track_response.json()["point_count"] >= data["analysis"]["distance_km"] * 100
     assert data["primary_file"]["file_type"] == "gpx"
     assert data["primary_file"]["parse_status"] == "parsed"
     assert data["actions"]["can_send_to_trip_plan"] is True

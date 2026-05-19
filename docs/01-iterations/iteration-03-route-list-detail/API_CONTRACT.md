@@ -5,6 +5,8 @@ Owner: project maintainer
 Last reviewed: 2026-05-08
 Source of truth: Pydantic V2 schemas and `/openapi.json`.
 
+> Superseded by Iteration 07: `track_preview` 和详情轨迹契约在 Iteration 07 改为数据库高保真 preview + 对象存储 full track_geojson。当前文件保留 Iteration 03 历史交付边界。
+
 ## GET /api/routes
 
 用途：线路列表、搜索和标签筛选。

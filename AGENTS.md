@@ -76,6 +76,7 @@ Iteration 03 Route List + Detail
 Iteration 04 TripPlan + Agent Mock
 Iteration 05 Snapshot / 我的规划
 Iteration 06 Ability Profile
+Iteration 07 Object Storage + Image Assets
 ```
 
 每轮迭代的交付文档在：
@@ -253,3 +254,47 @@ mock/real 切换不改页面代码
 没有无用抽象
 文档已同步
 ```
+
+## 对象存储闭环纪律
+
+涉及 COS / S3 / OSS / MinIO 等对象存储时，不能只用后端 TestClient 或 local provider 测试证明完成。
+
+前端直传对象存储的 slice 必须验证：
+
+```text
+ACL 或 bucket policy
+CORS 预检和真实浏览器上传
+Referer / 防盗链读策略
+签名 URL 的读写行为
+```
+
+如果上传链路使用 signed PUT URL，交付前必须至少验证一次浏览器等价预检：
+
+```text
+OPTIONS signed upload_url
+Origin: 部署前端 origin
+Access-Control-Request-Method: PUT
+Access-Control-Request-Headers: content-type
+```
+
+云端验收必须同时覆盖读写两条链路：
+
+```text
+POST /api/storage/upload-credentials
+前端或浏览器等价方式直传文件
+上传完成后的业务 complete 接口
+业务详情页可读取对象和渲染结果
+空 Referer / 非白名单 Referer 的防盗链行为
+```
+
+不得把“API 测试通过 + 云端读取通过”误判为“对象存储上传闭环完成”。
+
+对象存储相关部署还必须验证生产环境配置没有被部署脚本覆盖：
+
+```text
+STORAGE_PROVIDER
+COS_SECRET_ID / COS_SECRET_KEY / COS_TOKEN
+COS_BUCKET / COS_REGION / COS_CDN_BASE_URL
+```
+
+前端直传完成后，必须验证“业务 complete 接口”确实写库，并在刷新后通过读取接口返回新 key / URL。不能只看对象已经上传到桶里。

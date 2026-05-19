@@ -4,6 +4,8 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.features.storage.schemas import ImageAssetMetadata
+
 
 class UserPublic(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -22,6 +24,10 @@ class UserMe(BaseModel):
     username: str
     nickname: str
     avatar_url: str | None
+    avatar_storage_provider: str | None = None
+    avatar_storage_key: str | None = None
+    avatar_variants: dict | None = None
+    avatar_processing_status: str | None = None
     role: str
     status: str
     created_at: datetime
@@ -32,7 +38,7 @@ class UserUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     nickname: str | None = Field(default=None, min_length=1, max_length=64)
-    avatar_url: str | None = Field(default=None, max_length=500)
+    avatar: ImageAssetMetadata | None = None
 
 
 class ActivityAnalysisResponse(BaseModel):

@@ -13,6 +13,15 @@ class Settings:
     avatar_storage_dir: str
     route_storage_dir: str
     activity_storage_dir: str
+    asset_storage_dir: str
+    storage_provider: str
+    storage_public_base_url: str
+    cos_secret_id: str | None
+    cos_secret_key: str | None
+    cos_token: str | None
+    cos_bucket: str | None
+    cos_region: str | None
+    cos_cdn_base_url: str | None
     use_mock_amap: bool
     use_mock_weather: bool
     use_mock_search: bool
@@ -45,6 +54,17 @@ def get_settings() -> Settings:
         activity_storage_dir=os.getenv(
             "ACTIVITY_STORAGE_DIR", "storage/activity_tracks"
         ),
+        asset_storage_dir=os.getenv("ASSET_STORAGE_DIR", "storage/assets"),
+        storage_provider=os.getenv("STORAGE_PROVIDER", "local").lower(),
+        storage_public_base_url=os.getenv(
+            "STORAGE_PUBLIC_BASE_URL", "/static/assets"
+        ).rstrip("/"),
+        cos_secret_id=os.getenv("COS_SECRET_ID"),
+        cos_secret_key=os.getenv("COS_SECRET_KEY"),
+        cos_token=os.getenv("COS_TOKEN"),
+        cos_bucket=os.getenv("COS_BUCKET"),
+        cos_region=os.getenv("COS_REGION"),
+        cos_cdn_base_url=os.getenv("COS_CDN_BASE_URL"),
         use_mock_amap=os.getenv("USE_MOCK_AMAP", "true").lower() == "true",
         use_mock_weather=os.getenv("USE_MOCK_WEATHER", "true").lower() == "true",
         use_mock_search=os.getenv("USE_MOCK_SEARCH", "true").lower() == "true",
@@ -69,7 +89,14 @@ def get_settings() -> Settings:
 
 def _load_dotenv() -> None:
     env_path = os.getenv("SMART_OUTDOOR_ENV_FILE")
-    paths = [Path(env_path)] if env_path else [Path(__file__).resolve().parents[2] / ".env"]
+    backend_root = Path(__file__).resolve().parents[2]
+    if env_path:
+        paths = [_resolve_config_path(raw_path, backend_root) for raw_path in env_path.split(os.pathsep)]
+    else:
+        paths = [
+            backend_root / ".env",
+            backend_root / "config" / "app.local.env",
+        ]
 
     for path in paths:
         if not path.exists():
@@ -87,3 +114,10 @@ def _load_dotenv() -> None:
         for name, value in values.items():
             if name not in os.environ:
                 os.environ[name] = value
+
+
+def _resolve_config_path(raw_path: str, backend_root: Path) -> Path:
+    path = Path(raw_path.strip())
+    if path.is_absolute():
+        return path
+    return backend_root / path

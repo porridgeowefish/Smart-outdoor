@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
+from tests.routes.upload_helpers import image_asset
+
 
 def test_register_success_returns_public_user(client: TestClient) -> None:
     response = client.post(
@@ -130,16 +132,12 @@ def test_patch_me_updates_only_profile_fields(
     response = client.patch(
         "/api/me",
         headers=auth_headers,
-        json={
-            "nickname": "雪山徒步者",
-            "avatar_url": "https://cdn.example.com/avatar.jpg",
-        },
+            json={"nickname": "雪山徒步者"},
     )
 
     assert response.status_code == 200
     data = response.json()
     assert data["nickname"] == "雪山徒步者"
-    assert data["avatar_url"] == "https://cdn.example.com/avatar.jpg"
     assert data["role"] == "user"
     assert data["status"] == "active"
 
@@ -156,19 +154,30 @@ def test_patch_me_rejects_unallowed_fields(
     assert response.status_code == 422
 
 
-def test_upload_avatar_updates_current_user(
+def test_patch_me_updates_avatar_metadata(
     client: TestClient, auth_headers: dict[str, str]
 ) -> None:
-    response = client.post(
-        "/api/me/avatar",
+    avatar = image_asset(
+        client,
+        auth_headers,
+        asset_type="avatar",
+        original_filename="avatar.jpg",
+        variants={
+            "display": (b"display-webp", 512, 512),
+            "thumbnail": (b"thumb-webp", 128, 128),
+        },
+    )
+    response = client.patch(
+        "/api/me",
         headers=auth_headers,
-        files={"file": ("avatar.png", b"\x89PNG\r\n\x1a\navatar-bytes", "image/png")},
+        json={"avatar": avatar},
     )
 
     assert response.status_code == 200
     data = response.json()
-    assert data["avatar_url"].startswith("/static/avatars/")
-    assert data["avatar_url"].endswith(".png")
+    assert data["avatar_url"].startswith("/static/assets/")
+    assert data["avatar_storage_key"] == avatar["variants"]["display"]["storage_key"]
+    assert data["avatar_variants"]["thumbnail"]["url"].endswith(".webp")
 
     me_response = client.get("/api/me", headers=auth_headers)
     assert me_response.status_code == 200
@@ -176,33 +185,45 @@ def test_upload_avatar_updates_current_user(
 
     static_response = client.get(data["avatar_url"])
     assert static_response.status_code == 200
-    assert static_response.content == b"\x89PNG\r\n\x1a\navatar-bytes"
+    assert static_response.content == b"display-webp"
 
 
-def test_upload_avatar_requires_authorization(client: TestClient) -> None:
-    response = client.post(
-        "/api/me/avatar",
-        files={"file": ("avatar.png", b"\x89PNG\r\n\x1a\navatar-bytes", "image/png")},
-    )
+def test_upload_credentials_requires_authorization(client: TestClient) -> None:
+    response = client.post("/api/storage/upload-credentials", json={})
 
     assert response.status_code == 401
     assert response.json()["code"] == "UNAUTHORIZED"
 
 
-def test_upload_avatar_rejects_non_image_file(
+def test_patch_me_rejects_unowned_avatar_metadata(
     client: TestClient, auth_headers: dict[str, str]
 ) -> None:
-    response = client.post(
-        "/api/me/avatar",
+    response = client.patch(
+        "/api/me",
         headers=auth_headers,
-        files={"file": ("avatar.txt", b"not an image", "text/plain")},
+        json={
+            "avatar": {
+                "storage_provider": "local",
+                "storage_key": "users/other/avatar/display.webp",
+                "url": "/static/assets/users/other/avatar/display.webp",
+                "original_filename": "avatar.webp",
+                "processing_status": "ready",
+                "variants": {
+                    "display": {
+                        "storage_key": "users/other/avatar/display.webp",
+                        "url": "/static/assets/users/other/avatar/display.webp",
+                        "width": 512,
+                        "height": 512,
+                        "content_type": "image/webp",
+                        "size_bytes": 10,
+                    }
+                },
+            }
+        },
     )
 
     assert response.status_code == 400
-    assert response.json() == {
-        "code": "INVALID_AVATAR_FILE",
-        "message": "仅支持 JPG、PNG、WebP 或 GIF 图片",
-    }
+    assert response.json()["code"] == "INVALID_STORAGE_OBJECT"
 
 
 def test_openapi_exposes_auth_and_me_contracts(client: TestClient) -> None:
@@ -213,4 +234,4 @@ def test_openapi_exposes_auth_and_me_contracts(client: TestClient) -> None:
     assert "/api/auth/register" in paths
     assert "/api/auth/login" in paths
     assert "/api/me" in paths
-    assert "/api/me/avatar" in paths
+    assert "/api/storage/upload-credentials" in paths

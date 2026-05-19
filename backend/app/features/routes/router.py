@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -12,25 +12,32 @@ from app.features.routes.schemas import (
     RouteActionsResponse,
     RouteAnalysisResponse,
     RouteDetailResponse,
+    RouteFullTrackResponse,
     RouteListItem,
     RouteListResponse,
     RoutePrimaryFileResponse,
+    RouteTrackPreviewResponse,
     RouteTagTaxonomyResponse,
     RouteTrackResponse,
+    RouteUploadRequest,
     RouteUploadResponse,
 )
 from app.features.routes.service import (
     InvalidManualTagsError,
+    InvalidStorageMetadataError,
     RouteNotFoundError,
+    StorageObjectMissingError,
     UnsupportedCoverImageTypeError,
     UnsupportedRouteFileTypeError,
     build_track_preview,
     display_tags_from_manual_tags,
+    get_full_track_geojson,
     get_visible_route_detail,
     list_visible_routes,
     upload_route,
 )
 from app.features.routes.tag_taxonomy import taxonomy_categories
+from app.features.storage.service import UnsupportedStorageProviderError, get_storage_service
 from app.features.users.deps import get_current_user
 from app.features.users.model import User
 
@@ -89,7 +96,7 @@ def list_routes(
         RouteListItem(
             route_id=route.id,
             name=route.name,
-            cover_image_url=route.cover_image_url,
+            cover_image_url=_route_cover_url(route, preferred="thumbnail"),
             location=_route_location(route.manual_tags or {}, analysis.analysis_json or {}),
             visibility=route.visibility,
             distance_km=analysis.distance_km,
@@ -107,27 +114,17 @@ def list_routes(
 
 
 @router.post("/upload", response_model=RouteUploadResponse)
-async def upload_route_file(
-    file: UploadFile = File(...),
-    cover_image: UploadFile | None = File(default=None),
-    name: str = Form(...),
-    description: str | None = Form(default=None),
-    visibility: str = Form(default="private"),
-    manual_tags: str | None = Form(default=None),
+def upload_route_file(
+    payload: RouteUploadRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """上传线路轨迹文件（GPX/KML/GeoJSON），可选同时上传封面图片。"""
+    """完成线路上传：前端已直传文件，后端读取 storage_key 并解析。"""
     try:
-        route, route_file = await upload_route(
+        route, route_file = upload_route(
             db=db,
             current_user=current_user,
-            file=file,
-            name=name,
-            description=description,
-            visibility=visibility,
-            manual_tags_raw=manual_tags,
-            cover_image=cover_image,
+            payload=payload,
         )
     except UnsupportedRouteFileTypeError:
         return JSONResponse(
@@ -153,6 +150,16 @@ async def upload_route_file(
                 "message": "Only JPEG, PNG, and WebP cover images are supported",
             },
         )
+    except InvalidStorageMetadataError:
+        return JSONResponse(
+            status_code=400,
+            content={"code": "INVALID_STORAGE_OBJECT", "message": "Invalid storage object"},
+        )
+    except StorageObjectMissingError:
+        return JSONResponse(
+            status_code=400,
+            content={"code": "STORAGE_OBJECT_NOT_FOUND", "message": "Storage object not found"},
+        )
 
     return RouteUploadResponse(
         route_id=route.id,
@@ -165,6 +172,35 @@ async def upload_route_file(
 @router.get("/tag-taxonomy", response_model=RouteTagTaxonomyResponse)
 def get_route_tag_taxonomy() -> RouteTagTaxonomyResponse:
     return RouteTagTaxonomyResponse(categories=taxonomy_categories())
+
+
+@router.get("/{route_id}/track", response_model=RouteFullTrackResponse)
+def get_route_track(
+    route_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> RouteFullTrackResponse:
+    try:
+        route, analysis, _route_file = get_visible_route_detail(db, current_user, route_id)
+        geojson = get_full_track_geojson(analysis)
+    except RouteNotFoundError:
+        return JSONResponse(
+            status_code=404,
+            content={"code": "ROUTE_NOT_FOUND", "message": "Route not found"},
+        )
+    except StorageObjectMissingError:
+        return JSONResponse(
+            status_code=400,
+            content={"code": "STORAGE_OBJECT_NOT_FOUND", "message": "Storage object not found"},
+        )
+    coordinates = geojson.get("coordinates", [])
+    return RouteFullTrackResponse(
+        format="geojson",
+        coordinate_system="wgs84",
+        source="derived_full_geojson",
+        point_count=len(coordinates),
+        geojson=geojson,
+    )
 
 
 @router.get("/{route_id}", response_model=RouteDetailResponse)
@@ -182,12 +218,15 @@ def get_route_detail(
             content={"code": "ROUTE_NOT_FOUND", "message": "Route not found"},
         )
 
-    coordinates = analysis.track_geojson.get("coordinates", [])
+    preview = build_track_preview(analysis)
+    full_count = analysis.track_geojson_point_count or len(
+        (analysis.track_geojson or {}).get("coordinates", [])
+    )
     return RouteDetailResponse(
         route_id=route.id,
         name=route.name,
         description=route.description,
-        cover_image_url=route.cover_image_url,
+        cover_image_url=_route_cover_url(route, preferred="large"),
         location=_route_location(route.manual_tags or {}, analysis.analysis_json or {}),
         visibility=route.visibility,
         source_type=route.source_type,
@@ -208,17 +247,21 @@ def get_route_detail(
             center_point=analysis.center_point,
             analysis_json=analysis.analysis_json or {},
         ),
+        track_preview=(
+            RouteTrackPreviewResponse(**preview) if preview is not None else None
+        ),
         track=RouteTrackResponse(
             format="geojson",
             coordinate_system="wgs84",
-            simplified=True,
-            point_count=len(coordinates),
-            geojson=analysis.track_geojson,
+            source="derived_full_geojson",
+            point_count=full_count,
+            track_url=f"/api/routes/{route.id}/track",
+            geojson=None,
         ),
         primary_file=RoutePrimaryFileResponse(
             file_id=route_file.id,
             file_type=route_file.file_type,
-            file_url=route_file.file_url,
+            file_url=_stored_file_url(route_file),
             parse_status=route_file.parse_status,
         ),
         actions=RouteActionsResponse(
@@ -249,6 +292,44 @@ def _metric_filters_match(
     if max_elevation_gain_m is not None and elevation_gain_m > max_elevation_gain_m:
         return False
     return True
+
+
+def _route_cover_url(route, *, preferred: str) -> str | None:
+    variants = route.cover_image_variants or {}
+    value = variants.get(preferred)
+    if isinstance(value, dict) and isinstance(value.get("url"), str):
+        public = _public_storage_url(
+            provider=route.cover_storage_provider,
+            key=value.get("storage_key"),
+        )
+        return public or value["url"]
+    public = _public_storage_url(
+        provider=route.cover_storage_provider,
+        key=route.cover_storage_key,
+    )
+    if public:
+        return public
+    return route.cover_image_url
+
+
+def _stored_file_url(route_file) -> str:
+    public = _public_storage_url(
+        provider=route_file.storage_provider,
+        key=route_file.storage_key,
+    )
+    return public or route_file.file_url
+
+
+def _public_storage_url(*, provider: str | None, key: str | None) -> str | None:
+    if not provider or not key:
+        return None
+    try:
+        return get_storage_service().public_url(
+            key=key,
+            provider=provider,
+        )
+    except UnsupportedStorageProviderError:
+        return None
 
 
 def _route_location(manual_tags: dict, analysis_json: dict) -> str:

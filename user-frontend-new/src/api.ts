@@ -1,23 +1,19 @@
-/**
- * API 客户端封装。
- *
- * 基于 openapi-fetch 生成的类型安全客户端，自动从 OpenAPI schema 导入类型。
- * 所有 API 函数统一返回数据或抛出 ApiError，由调用方处理 UI 反馈。
- */
-
 import createClient from 'openapi-fetch'
-import type { paths, components } from './generated/openapi'
+import type { components, paths } from './generated/openapi'
 
-// 从 OpenAPI schema 导出的类型别名，供 Vue 组件直接使用
 export type LoginRequest = components['schemas']['LoginRequest']
 export type LoginResponse = components['schemas']['LoginResponse']
 export type RegisterRequest = components['schemas']['RegisterRequest']
 export type RegisterResponse = components['schemas']['RegisterResponse']
 export type UserPublic = components['schemas']['UserPublic']
+export type UserMe = components['schemas']['UserMe']
+export type UserUpdateRequest = components['schemas']['UserUpdateRequest']
 export type RouteListItem = components['schemas']['RouteListItem']
 export type RouteListResponse = components['schemas']['RouteListResponse']
+export type RouteUploadRequest = components['schemas']['RouteUploadRequest']
 export type RouteUploadResponse = components['schemas']['RouteUploadResponse']
 export type RouteDetailResponse = components['schemas']['RouteDetailResponse']
+export type RouteFullTrackResponse = components['schemas']['RouteFullTrackResponse']
 export type RouteTagTaxonomyResponse = components['schemas']['RouteTagTaxonomyResponse']
 export type AbilityProfileResponse = components['schemas']['AbilityProfileResponse']
 export type ActivityTrackItem = components['schemas']['ActivityTrackItem']
@@ -33,8 +29,22 @@ export type TripPlanConversationResponse = components['schemas']['TripPlanConver
 export type RoutePlanSnapshotItem = components['schemas']['RoutePlanSnapshotItem']
 export type RoutePlanSnapshotListResponse = components['schemas']['RoutePlanSnapshotListResponse']
 export type RoutePlanSnapshotDetailResponse = components['schemas']['RoutePlanSnapshotDetailResponse']
+export type ImageAssetMetadata = components['schemas']['ImageAssetMetadata']
+export type StorageObjectMetadata = components['schemas']['StorageObjectMetadata']
+export type UploadCredentialResponse = components['schemas']['UploadCredentialResponse']
 
-/** API 错误，携带 HTTP 状态码和后端返回的错误体 */
+type UploadAssetType = 'avatar' | 'route_cover' | 'route_track_raw'
+type UploadedObject = StorageObjectMetadata & {
+  storage_provider: string
+}
+
+type PreparedImage = {
+  blob: Blob
+  width: number
+  height: number
+  contentType: string
+}
+
 export class ApiError extends Error {
   status: number
   payload: unknown
@@ -47,10 +57,8 @@ export class ApiError extends Error {
   }
 }
 
-/** 类型安全的 API 客户端， baseUrl 为空表示同源请求 */
 export const apiClient = createClient<paths>({ baseUrl: '' })
 
-// 请求拦截器：自动注入 localStorage 中的 JWT Token
 apiClient.use({
   onRequest({ request }) {
     const token = localStorage.getItem('access_token')
@@ -61,45 +69,80 @@ apiClient.use({
   },
 })
 
-/** 检查本地是否存在已保存的 Token（用于路由守卫判断登录状态） */
 export function hasAuthToken() {
   return Boolean(localStorage.getItem('access_token'))
 }
 
-/** 清除本地存储的 Token（登出时调用） */
 export function clearAuthToken() {
   localStorage.removeItem('access_token')
   localStorage.removeItem('token_type')
 }
 
-/** 登录：成功后将 Token 存入 localStorage */
 export async function login(payload: LoginRequest): Promise<LoginResponse> {
   const { data, error, response } = await apiClient.POST('/api/auth/login', {
     body: payload,
   })
-  if (error || !data) throw buildApiError(response.status, error, '登录失败')
+  if (error || !data) throw buildApiError(response.status, error, 'Login failed')
   localStorage.setItem('access_token', data.access_token)
   localStorage.setItem('token_type', data.token_type)
   return data
 }
 
-/** 注册新用户 */
 export async function register(payload: RegisterRequest): Promise<RegisterResponse> {
   const { data, error, response } = await apiClient.POST('/api/auth/register', {
     body: payload,
   })
-  if (error || !data) throw buildApiError(response.status, error, '注册失败')
+  if (error || !data) throw buildApiError(response.status, error, 'Register failed')
   return data
 }
 
-/** 获取当前登录用户信息 */
-export async function getMe(): Promise<UserPublic> {
+export async function getMe(): Promise<UserMe> {
   const { data, error, response } = await apiClient.GET('/api/me')
-  if (error || !data) throw buildApiError(response.status, error, '获取用户信息失败')
+  if (error || !data) throw buildApiError(response.status, error, 'Failed to load user')
   return data
 }
 
-/** 查询线路列表，支持关键词、可见性和分页参数 */
+export async function updateMe(payload: UserUpdateRequest): Promise<UserMe> {
+  const { data, error, response } = await apiClient.PATCH('/api/me', {
+    body: payload,
+  })
+  if (error || !data) throw buildApiError(response.status, error, 'Failed to update user')
+  return data
+}
+
+export async function uploadAvatar(file: File): Promise<UserMe> {
+  const [display, thumbnail] = await Promise.all([
+    prepareImage(file, 512, 0.86),
+    prepareImage(file, 128, 0.82),
+  ])
+  const [displayObject, thumbnailObject] = await Promise.all([
+    uploadObject({
+      assetType: 'avatar',
+      blob: display.blob,
+      originalFilename: file.name,
+      contentType: display.contentType,
+      variant: 'display',
+      width: display.width,
+      height: display.height,
+    }),
+    uploadObject({
+      assetType: 'avatar',
+      blob: thumbnail.blob,
+      originalFilename: file.name,
+      contentType: thumbnail.contentType,
+      variant: 'thumbnail',
+      width: thumbnail.width,
+      height: thumbnail.height,
+    }),
+  ])
+  return updateMe({
+    avatar: buildImageAsset(file.name, displayObject, {
+      display: displayObject,
+      thumbnail: thumbnailObject,
+    }),
+  })
+}
+
 export async function listRoutes(params: {
   keyword?: string
   visibility?: string
@@ -116,27 +159,34 @@ export async function listRoutes(params: {
       },
     },
   })
-  if (error || !data) throw buildApiError(response.status, error, '获取线路列表失败')
+  if (error || !data) throw buildApiError(response.status, error, 'Failed to load routes')
   return data
 }
 
-/** 获取单条线路的完整详情 */
 export async function getRouteDetail(routeId: string): Promise<RouteDetailResponse> {
   const { data, error, response } = await apiClient.GET('/api/routes/{route_id}', {
     params: {
       path: { route_id: routeId },
     },
   })
-  if (error || !data) throw buildApiError(response.status, error, '获取线路详情失败')
+  if (error || !data) throw buildApiError(response.status, error, 'Failed to load route detail')
   return data
 }
 
-/** 上传线路文件（FormData，不经过 openapi-fetch，手动处理 multipart） */
+export async function getRouteTrack(routeId: string): Promise<RouteFullTrackResponse> {
+  const { data, error, response } = await apiClient.GET('/api/routes/{route_id}/track', {
+    params: {
+      path: { route_id: routeId },
+    },
+  })
+  if (error || !data) throw buildApiError(response.status, error, 'Failed to load route track')
+  return data
+}
+
 export async function getRouteTagTaxonomy(): Promise<RouteTagTaxonomyResponse> {
-  const response = await fetch('/api/routes/tag-taxonomy', { headers: authHeaders() })
-  const body = await parseJson(response)
-  if (!response.ok) throw buildApiError(response.status, body, '????????')
-  return body as RouteTagTaxonomyResponse
+  const { data, error } = await apiClient.GET('/api/routes/tag-taxonomy')
+  if (error || !data) throw buildApiError(500, error, 'Failed to load route tags')
+  return data
 }
 
 export async function uploadRoute(payload: {
@@ -147,36 +197,48 @@ export async function uploadRoute(payload: {
   visibility: 'public' | 'private'
   manualTags?: Record<string, unknown>
 }): Promise<RouteUploadResponse> {
-  const formData = new FormData()
-  formData.append('file', payload.file)
-  if (payload.coverImage) formData.append('cover_image', payload.coverImage)
-  formData.append('name', payload.name)
-  if (payload.description?.trim()) formData.append('description', payload.description.trim())
-  formData.append('visibility', payload.visibility)
-  if (payload.manualTags) formData.append('manual_tags', JSON.stringify(payload.manualTags))
-
-  const response = await fetch('/api/routes/upload', {
-    method: 'POST',
-    headers: authHeaders(),
-    body: formData,
+  const trackObjectPromise = uploadObject({
+    assetType: 'route_track_raw',
+    blob: payload.file,
+    originalFilename: payload.file.name,
+    contentType: routeTrackContentType(payload.file),
+    variant: 'raw',
   })
-  const body = await parseJson(response)
-  if (!response.ok) {
-    throw buildApiError(response.status, body, '上传线路失败')
+  const coverImagePromise = payload.coverImage ? uploadRouteCover(payload.coverImage) : Promise.resolve(null)
+
+  const [trackObject, coverImage] = await Promise.all([trackObjectPromise, coverImagePromise])
+  const body: RouteUploadRequest = {
+    name: payload.name,
+    description: payload.description?.trim() || null,
+    visibility: payload.visibility,
+    manual_tags: payload.manualTags ?? null,
+    track_file: {
+      storage_provider: trackObject.storage_provider,
+      storage_key: trackObject.storage_key,
+      file_url: trackObject.url,
+      file_type: routeTrackFileType(payload.file),
+      content_type: trackObject.content_type,
+      size_bytes: trackObject.size_bytes,
+      original_filename: payload.file.name,
+    },
+    cover_image: coverImage,
   }
-  return body as RouteUploadResponse
+
+  const { data, error, response } = await apiClient.POST('/api/routes/upload', { body })
+  if (error || !data) throw buildApiError(response.status, error, 'Failed to upload route')
+  return data
 }
 
 export async function getAbilityProfile(): Promise<AbilityProfileResponse | null> {
   const { data, error, response } = await apiClient.GET('/api/me/ability-profile')
   if (response.status === 404) return null
-  if (error || !data) throw buildApiError(response.status, error, '获取能力画像失败')
+  if (error || !data) throw buildApiError(response.status, error, 'Failed to load ability profile')
   return data
 }
 
 export async function listActivityTracks(): Promise<ActivityTrackListResponse> {
   const { data, error, response } = await apiClient.GET('/api/me/activity-tracks')
-  if (error || !data) throw buildApiError(response.status, error, '获取运动轨迹失败')
+  if (error || !data) throw buildApiError(response.status, error, 'Failed to load activity tracks')
   return data
 }
 
@@ -196,9 +258,7 @@ export async function uploadActivityTrack(payload: {
     body: formData,
   })
   const body = await parseJson(response)
-  if (!response.ok) {
-    throw buildApiError(response.status, body, '上传运动轨迹失败')
-  }
+  if (!response.ok) throw buildApiError(response.status, body, 'Failed to upload activity track')
   return body as ActivityUploadResponse
 }
 
@@ -208,13 +268,13 @@ export async function sendTripPlanMessage(
   const { data, error, response } = await apiClient.POST('/api/trip-plans/messages', {
     body: payload,
   })
-  if (error || !data) throw buildApiError(response.status, error, '发送规划消息失败')
+  if (error || !data) throw buildApiError(response.status, error, 'Failed to send trip plan message')
   return data
 }
 
 export async function listTripPlans(): Promise<TripPlanListResponse> {
   const { data, error, response } = await apiClient.GET('/api/trip-plans')
-  if (error || !data) throw buildApiError(response.status, error, '获取历史对话失败')
+  if (error || !data) throw buildApiError(response.status, error, 'Failed to load trip plans')
   return data
 }
 
@@ -226,7 +286,7 @@ export async function getTripPlanConversation(
       path: { trip_plan_id: tripPlanId },
     },
   })
-  if (error || !data) throw buildApiError(response.status, error, '获取对话记录失败')
+  if (error || !data) throw buildApiError(response.status, error, 'Failed to load conversation')
   return data
 }
 
@@ -245,7 +305,7 @@ export async function getCandidateRouteDetail(
       },
     },
   )
-  if (error || !data) throw buildApiError(response.status, error, '获取候选线路详情失败')
+  if (error || !data) throw buildApiError(response.status, error, 'Failed to load candidate route')
   return data
 }
 
@@ -264,13 +324,13 @@ export async function saveCandidateRoute(
       },
     },
   )
-  if (error || !data) throw buildApiError(response.status, error, '保存规划失败')
+  if (error || !data) throw buildApiError(response.status, error, 'Failed to save route plan')
   return data
 }
 
 export async function listRoutePlanSnapshots(): Promise<RoutePlanSnapshotListResponse> {
   const { data, error, response } = await apiClient.GET('/api/my/route-plan-snapshots')
-  if (error || !data) throw buildApiError(response.status, error, '获取我的规划失败')
+  if (error || !data) throw buildApiError(response.status, error, 'Failed to load saved plans')
   return data
 }
 
@@ -285,11 +345,10 @@ export async function getRoutePlanSnapshotDetail(
       },
     },
   )
-  if (error || !data) throw buildApiError(response.status, error, '获取规划详情失败')
+  if (error || !data) throw buildApiError(response.status, error, 'Failed to load saved plan')
   return data
 }
 
-/** 带认证的 fetch 包装，用于非标准 API 请求（如文件下载） */
 export async function apiFetch(url: string, options: RequestInit = {}) {
   const headers = new Headers(options.headers || {})
   const token = localStorage.getItem('access_token')
@@ -299,7 +358,177 @@ export async function apiFetch(url: string, options: RequestInit = {}) {
   return fetch(url, { ...options, headers })
 }
 
-/** 构造带 Bearer Token 的 Headers 对象 */
+async function uploadRouteCover(file: File): Promise<ImageAssetMetadata> {
+  const [large, thumbnail] = await Promise.all([
+    prepareImage(file, 1280, 0.84),
+    prepareImage(file, 480, 0.82),
+  ])
+  const [largeObject, thumbnailObject] = await Promise.all([
+    uploadObject({
+      assetType: 'route_cover',
+      blob: large.blob,
+      originalFilename: file.name,
+      contentType: large.contentType,
+      variant: 'large',
+      width: large.width,
+      height: large.height,
+    }),
+    uploadObject({
+      assetType: 'route_cover',
+      blob: thumbnail.blob,
+      originalFilename: file.name,
+      contentType: thumbnail.contentType,
+      variant: 'thumbnail',
+      width: thumbnail.width,
+      height: thumbnail.height,
+    }),
+  ])
+  return buildImageAsset(file.name, largeObject, {
+    large: largeObject,
+    thumbnail: thumbnailObject,
+  })
+}
+
+function buildImageAsset(
+  originalFilename: string,
+  primary: UploadedObject,
+  variants: Record<string, UploadedObject>,
+): ImageAssetMetadata {
+  const cleanedVariants: Record<string, StorageObjectMetadata> = {}
+  Object.entries(variants).forEach(([name, object]) => {
+    cleanedVariants[name] = storageObjectMetadata(object)
+  })
+
+  return {
+    storage_provider: primary.storage_provider,
+    storage_key: primary.storage_key,
+    url: primary.url,
+    original_filename: originalFilename,
+    processing_status: 'ready',
+    variants: cleanedVariants,
+  }
+}
+
+function storageObjectMetadata(object: UploadedObject): StorageObjectMetadata {
+  return {
+    storage_key: object.storage_key,
+    url: object.url,
+    width: object.width ?? null,
+    height: object.height ?? null,
+    content_type: object.content_type,
+    size_bytes: object.size_bytes,
+  }
+}
+
+async function uploadObject(payload: {
+  assetType: UploadAssetType
+  blob: Blob
+  originalFilename: string
+  contentType: string
+  variant?: string
+  width?: number
+  height?: number
+}): Promise<UploadedObject> {
+  const { data, error, response } = await apiClient.POST('/api/storage/upload-credentials', {
+    body: {
+      asset_type: payload.assetType,
+      variant: payload.variant ?? null,
+      content_type: payload.contentType,
+      original_filename: payload.originalFilename,
+      size_bytes: payload.blob.size,
+    },
+  })
+  if (error || !data) throw buildApiError(response.status, error, 'Failed to create upload credential')
+
+  const headers = new Headers(data.headers)
+  const isLocalUpload = data.upload_url.startsWith('/api/')
+  if (isLocalUpload) {
+    const token = localStorage.getItem('access_token')
+    if (token) headers.set('Authorization', `Bearer ${token}`)
+  }
+
+  const uploadResponse = await fetch(data.upload_url, {
+    method: 'PUT',
+    headers,
+    body: payload.blob,
+  })
+  const uploadBody = await parseJson(uploadResponse)
+  if (!uploadResponse.ok) {
+    throw buildApiError(uploadResponse.status, uploadBody, 'Failed to upload object')
+  }
+
+  return {
+    storage_provider: data.storage_provider,
+    storage_key: data.storage_key,
+    url: data.public_url,
+    width: payload.width ?? null,
+    height: payload.height ?? null,
+    content_type: payload.contentType,
+    size_bytes: payload.blob.size,
+  }
+}
+
+async function prepareImage(file: File, maxEdge: number, quality: number): Promise<PreparedImage> {
+  const image = await loadImage(file)
+  const scale = Math.min(1, maxEdge / Math.max(image.naturalWidth, image.naturalHeight))
+  const width = Math.max(1, Math.round(image.naturalWidth * scale))
+  const height = Math.max(1, Math.round(image.naturalHeight * scale))
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Canvas is unavailable')
+  ctx.drawImage(image, 0, 0, width, height)
+
+  const contentType = 'image/webp'
+  const blob = await canvasToBlob(canvas, contentType, quality)
+  return { blob, width, height, contentType }
+}
+
+function loadImage(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    const url = URL.createObjectURL(file)
+    image.onload = () => {
+      URL.revokeObjectURL(url)
+      resolve(image)
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('Failed to decode image'))
+    }
+    image.src = url
+  })
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error('Failed to encode image'))
+        return
+      }
+      resolve(blob)
+    }, type, quality)
+  })
+}
+
+function routeTrackFileType(file: File) {
+  const lower = file.name.toLowerCase()
+  if (lower.endsWith('.gpx')) return 'gpx'
+  if (lower.endsWith('.kml')) return 'kml'
+  if (lower.endsWith('.geojson') || lower.endsWith('.json')) return 'geojson'
+  return 'unknown'
+}
+
+function routeTrackContentType(file: File) {
+  const lower = file.name.toLowerCase()
+  if (lower.endsWith('.gpx')) return 'application/gpx+xml'
+  if (lower.endsWith('.kml')) return 'application/vnd.google-earth.kml+xml'
+  if (lower.endsWith('.geojson') || lower.endsWith('.json')) return 'application/geo+json'
+  return file.type || 'application/octet-stream'
+}
+
 function authHeaders(): Headers {
   const headers = new Headers()
   const token = localStorage.getItem('access_token')
@@ -307,7 +536,6 @@ function authHeaders(): Headers {
   return headers
 }
 
-/** 安全解析响应 JSON，空响应返回 null */
 async function parseJson(response: Response): Promise<unknown> {
   const text = await response.text()
   if (!text) return null
@@ -318,16 +546,10 @@ async function parseJson(response: Response): Promise<unknown> {
   }
 }
 
-/** 从后端错误响应中提取可读消息，失败时使用 fallback */
 function buildApiError(status: number, payload: unknown, fallback: string) {
   return new ApiError(status, extractMessage(payload) || fallback, payload)
 }
 
-/** 从后端响应体中提取错误消息，兼容多种错误格式：
- * - { message: "..." } （业务错误）
- * - { detail: "..." } （FastAPI 验证错误字符串）
- * - { detail: [{ msg: "..." }] } （FastAPI 字段验证错误数组）
- */
 function extractMessage(payload: unknown): string | null {
   if (!payload || typeof payload !== 'object') return null
   const body = payload as Record<string, unknown>
