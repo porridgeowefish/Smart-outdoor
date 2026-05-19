@@ -41,7 +41,7 @@ def main() -> int:
     parser.add_argument(
         "--sync-env",
         action="store_true",
-        help="Upload local backend/.env to remote backend/.env.production before running.",
+        help="Upload local backend/.env to remote backend/.env before running.",
     )
     parser.add_argument(
         "--rebuild",
@@ -129,7 +129,7 @@ def upload_env(ssh: paramiko.SSHClient, remote_dir: str) -> None:
     local_env = PROJECT_ROOT / "backend" / ".env"
     if not local_env.exists():
         raise FileNotFoundError(local_env)
-    remote_path = f"{remote_dir}/backend/.env.production"
+    remote_path = f"{remote_dir}/backend/.env"
     sftp = ssh.open_sftp()
     try:
         sftp.put(str(local_env), remote_path)
@@ -140,6 +140,7 @@ def upload_env(ssh: paramiko.SSHClient, remote_dir: str) -> None:
 
 def sync_code(ssh: paramiko.SSHClient, remote_dir: str) -> None:
     files = [
+        (PROJECT_ROOT / "docker-compose.yml", f"{remote_dir}/docker-compose.yml"),
         (PROJECT_ROOT / "backend" / "Dockerfile", f"{remote_dir}/backend/Dockerfile"),
         (PROJECT_ROOT / "backend" / "pyproject.toml", f"{remote_dir}/backend/pyproject.toml"),
         (

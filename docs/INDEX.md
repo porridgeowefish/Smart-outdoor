@@ -39,6 +39,8 @@ PRD 表达产品愿景；MVP 迭代文档表达当前实现边界。不得仅凭
 ## 必读入口
 
 - 文档治理规范：[DOCUMENTATION_STANDARD.md](./00-product-and-architecture/DOCUMENTATION_STANDARD.md)
+- AI Agent 规则索引：[AGENTS.md](../AGENTS.md)
+- AI Agent 原子规则：[agent-rules/README.md](./00-product-and-architecture/agent-rules/README.md)
 - 产品与架构入口：[00-product-and-architecture/README.md](./00-product-and-architecture/README.md)
 - 核心资产索引：[ASSET_INDEX.md](./00-product-and-architecture/ASSET_INDEX.md)
 - PRD 摘要：[PRD.md](./00-product-and-architecture/PRD.md)

@@ -148,10 +148,9 @@ Verify existing-avatar replacement, not only first-time avatar setup.
 Additional deployment issue found during verification:
 
 ```text
-deploy_cloud.py rewrote backend/.env.production without COS settings.
-After deploy, upload credentials fell back to local provider.
-The deploy script must propagate object-storage environment keys from local env files
-or explicit environment variables before any cloud acceptance run.
+The deployment path had two runtime env sources: backend/.env and backend/.env.production.
+backend/.env.production missed COS and LLM settings, so a direct Docker Compose run could
+fall back to local provider and mock services.
 ```
 
 New permanent rule:
@@ -159,4 +158,6 @@ New permanent rule:
 ```text
 Object-storage closure must verify the exact frontend payload shape, the business
 complete API write, the refresh/read API result, and deployment-time provider config.
+backend/.env is the single runtime source of truth for local development and cloud deploy.
+Do not restore backend/.env.production or duplicate runtime config inside deploy scripts.
 ```

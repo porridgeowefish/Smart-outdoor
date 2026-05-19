@@ -68,11 +68,11 @@ python scripts/migrate_assets_to_cos.py --base-url https://your-api-domain --app
 To run the same migration through SSH against the deployed Docker Compose stack:
 
 ```text
-python scripts/run_cloud_asset_migration.py --sync-env --rebuild
-python scripts/run_cloud_asset_migration.py --sync-env --rebuild --apply
+python scripts/run_cloud_asset_migration.py --rebuild
+python scripts/run_cloud_asset_migration.py --rebuild --apply
 ```
 
-The wrapper reads `ECS_HOST`, `ECS_USER`, `ECS_PASSWORD` or `ECS_KEY_FILE`, and `SMART_OUTDOOR_REMOTE_DIR` from environment variables. By default it uploads the backend Dockerfile and migration script, rebuilds the backend image, initializes the schema, and then runs the migration. `--sync-env` uploads local `backend/.env` to remote `backend/.env.production`; use it only after confirming local `.env` contains the intended cloud database and COS settings.
+The wrapper reads `ECS_HOST`, `ECS_USER`, `ECS_PASSWORD` or `ECS_KEY_FILE`, and `SMART_OUTDOOR_REMOTE_DIR` from environment variables. Runtime configuration is owned by `backend/.env`; do not recreate a separate `backend/.env.production` for migration or deploy.
 
 Migration scope:
 
@@ -162,9 +162,9 @@ COS_REGION
 optional COS_TOKEN
 optional COS_CDN_BASE_URL
 
-The backend loads configuration from `backend/.env` by default.
-`backend/config/app.local.env` remains an optional fallback for deployments that prefer a separate config directory.
-`SMART_OUTDOOR_ENV_FILE` can point to another config file when a deployment needs a different path.
+The backend loads configuration from `backend/.env` by default. This is the single runtime source of truth for local development and cloud deployment.
+`backend/config/app.local.env` remains an optional fallback for experiments, not a second maintained runtime config.
+`SMART_OUTDOOR_ENV_FILE` can point to another config file only for temporary diagnostics.
 Real config files and `deploy_cloud.py` are ignored by git.
 
 Existing route_analysis_snapshots.track_geojson remains a legacy compatibility field.

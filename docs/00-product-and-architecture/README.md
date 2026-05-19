@@ -32,6 +32,7 @@ Source of truth: `docs/INDEX.md` routes readers here; each linked document owns 
 | [API_CONTRACT_STRATEGY.md](./API_CONTRACT_STRATEGY.md) | 契约驱动、OpenAPI、前后端类型生成原则 | API 契约文档 |
 | [MVP_ROADMAP.md](./MVP_ROADMAP.md) | MVP 迭代顺序和完成定义 | MVP 实施切片计划 |
 | [FUTURE_PLANNING.md](./FUTURE_PLANNING.md) | 后续候选迭代想法、业务价值和大致实现草案 | 跨对话规划讨论 |
+| [agent-rules/](./agent-rules/README.md) | AI Agent 原子规则与渐进式披露索引 | `AGENTS.md` |
 | [DOCUMENTATION_STANDARD.md](./DOCUMENTATION_STANDARD.md) | 文档管理规范 | 本次文档治理结论 |
 | [ADR/](./ADR/) | 架构决策记录 | 架构决策 |
 

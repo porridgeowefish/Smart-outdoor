@@ -21,7 +21,7 @@ services:
     build: ./backend
     container_name: smart_outdoor_backend
     restart: unless-stopped
-    env_file: ./backend/.env.production
+    env_file: ./backend/.env
     depends_on:
       postgres:
         condition: service_healthy
