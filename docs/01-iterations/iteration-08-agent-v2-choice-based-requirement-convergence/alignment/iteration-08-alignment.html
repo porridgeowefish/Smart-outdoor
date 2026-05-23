@@ -1,0 +1,806 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Iteration 08 对齐工作台</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f8f7;
+      --panel: #ffffff;
+      --ink: #17211b;
+      --muted: #647067;
+      --line: #dfe7e2;
+      --soft: #edf4f0;
+      --brand: #127a56;
+      --brand-2: #0f5f88;
+      --warn: #a35b00;
+      --danger: #a73535;
+      --shadow: 0 14px 40px rgba(20, 35, 27, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+      line-height: 1.55;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 14px 20px;
+    }
+    .title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+    .mark {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: var(--brand);
+      color: #fff;
+      font-weight: 900;
+    }
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sub {
+      margin: 1px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .progress {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 260px;
+    }
+    .bar {
+      flex: 1;
+      height: 8px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #dde8e2;
+    }
+    .bar > span {
+      display: block;
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--brand);
+      transition: width 0.2s ease;
+    }
+    .count {
+      width: 58px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+    }
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 22px 20px 120px;
+    }
+    .slide {
+      display: none;
+      min-height: calc(100vh - 190px);
+      animation: in 0.16s ease-out;
+    }
+    .slide.active { display: block; }
+    @keyframes in {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      gap: 18px;
+      align-items: start;
+    }
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+    .panel.pad { padding: 22px; }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 24px;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 18px 0 8px;
+      font-size: 16px;
+      letter-spacing: 0;
+    }
+    p { margin: 0 0 12px; }
+    .lead {
+      color: #35433a;
+      font-size: 16px;
+    }
+    .note {
+      border-left: 4px solid var(--brand);
+      background: var(--soft);
+      padding: 12px 14px;
+      color: #26362d;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .decision {
+      display: grid;
+      gap: 10px;
+      margin: 16px 0;
+    }
+    .option {
+      display: grid;
+      grid-template-columns: 24px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 12px;
+      cursor: pointer;
+    }
+    .option:hover { border-color: #b8ccc1; background: #fbfdfc; }
+    .option input { margin-top: 3px; }
+    .option strong { display: block; margin-bottom: 2px; }
+    .option span { color: var(--muted); font-size: 13px; }
+    textarea, input[type="text"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      padding: 10px 12px;
+      outline: none;
+    }
+    textarea { min-height: 96px; resize: vertical; }
+    textarea:focus, input[type="text"]:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(18, 122, 86, 0.12); }
+    .diagram {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfb;
+      padding: 14px;
+    }
+    pre {
+      margin: 0;
+      white-space: pre;
+      font-size: 13px;
+      line-height: 1.45;
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    }
+    .mermaid {
+      display: flex;
+      justify-content: center;
+      min-width: 760px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+    }
+    .mermaid svg {
+      max-width: 100%;
+      height: auto;
+    }
+    .side {
+      position: sticky;
+      top: 82px;
+      display: grid;
+      gap: 12px;
+    }
+    .summary {
+      padding: 16px;
+    }
+    .summary h3 { margin-top: 0; }
+    .mini-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .mini-list li {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px 10px;
+      background: #fff;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      border-radius: 6px;
+      background: var(--soft);
+      color: #244133;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    .table th, .table td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px;
+      vertical-align: top;
+      text-align: left;
+      font-size: 13px;
+    }
+    .table th { background: var(--soft); color: #24362d; }
+    .table tr:last-child td { border-bottom: 0; }
+    .controls {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 20;
+      border-top: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(12px);
+    }
+    .controls-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 12px 20px;
+    }
+    button, .download {
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: var(--brand);
+      color: #fff;
+      padding: 10px 14px;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    button.secondary {
+      border-color: var(--line);
+      background: #fff;
+      color: var(--ink);
+    }
+    button.ghost {
+      border-color: transparent;
+      background: transparent;
+      color: var(--brand);
+    }
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .warn { color: var(--warn); }
+    .danger { color: var(--danger); }
+    .export-box {
+      min-height: 280px;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 12px;
+    }
+    .small { color: var(--muted); font-size: 12px; }
+    @media (max-width: 900px) {
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .progress { width: 100%; min-width: 0; }
+      .grid { grid-template-columns: 1fr; }
+      .side { position: static; }
+      main { padding-bottom: 150px; }
+      .controls-inner { align-items: stretch; flex-direction: column; }
+      .actions { width: 100%; }
+      button, .download { flex: 1; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="topbar">
+      <div class="title">
+        <div class="mark">08</div>
+        <div>
+          <h1>Iteration 08 对齐工作台</h1>
+          <p class="sub">HTML 用于判断和反馈；导出的 Markdown 用于提交你的回答。</p>
+        </div>
+      </div>
+      <div class="progress" aria-label="progress">
+        <div class="bar"><span id="bar"></span></div>
+        <div class="count"><span id="pageNow">1</span>/<span id="pageTotal">8</span></div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="slide active" data-title="使用方式">
+      <div class="grid">
+        <div class="panel pad">
+          <h2>这次要对齐什么</h2>
+          <p class="lead">本页用于对齐 Iteration 08 的剩余关键决策：推荐充分条件、第一轮选择卡、选择卡类型、前端交互、状态恢复和导出反馈。</p>
+          <div class="note">
+            你在本 HTML 中做选择、填写备注，最后点击“导出 Markdown”。保存后的文件建议命名为：
+            <br />
+            <strong>docs/01-iterations/iteration-08-agent-v2-choice-based-requirement-convergence/alignment/iteration-08-alignment-response.md</strong>
+          </div>
+          <h3>工作模式</h3>
+          <table class="table">
+            <tr><th>载体</th><th>用途</th></tr>
+            <tr><td>HTML</td><td>翻页、可视化理解、选择、判断、导出回答。</td></tr>
+            <tr><td>导出 Markdown</td><td>保存你的回答，作为对齐反馈输入。</td></tr>
+            <tr><td>正式迭代 Markdown</td><td>由 Agent 读取反馈后整理成共识事实源。</td></tr>
+          </table>
+          <h3>对齐范围</h3>
+          <ul>
+            <li>sufficiency_check 推荐充分条件</li>
+            <li>第一轮选择卡问什么</li>
+            <li>选择卡控件类型是否包含 range</li>
+            <li>前端交互和历史恢复</li>
+            <li>choice_request_id 和 confirmed_context 返回策略</li>
+          </ul>
+        </div>
+        <aside class="side">
+          <div class="panel summary">
+            <h3>已定共识</h3>
+            <ul class="mini-list">
+              <li>选择结果直接写入 context_state。</li>
+              <li>user_choice > user_explicit_text > ai_extracted。</li>
+              <li>自然语言与选择结果使用不同接口。</li>
+              <li>TripPlan 是持续会话；AgentRun 是一次执行单元。</li>
+            </ul>
+          </div>
+          <div class="panel summary">
+            <h3>操作提示</h3>
+            <p class="small">每页都可以先按推荐选项作答。最后一页会生成完整 Markdown，你可以下载保存。</p>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="slide" data-title="整体流程">
+      <div class="grid">
+        <div class="panel pad">
+          <h2>整体流程确认</h2>
+          <p class="lead">确认 TripPlan 会话、AgentRun、choice_request 和 context_state 的关系。</p>
+          <div class="diagram">
+<div class="mermaid">
+sequenceDiagram
+    participant U as User
+    participant UI as HTML/Frontend
+    participant API as TripPlan API
+    participant A as Agent Workflow
+    participant S as context_state
+
+    U->>UI: 输入自然语言
+    UI->>API: POST /trip-plans/messages
+    API->>A: 创建 AgentRun #1
+    A->>S: AI 抽取低置信度草稿
+    A-->>UI: ask_user_choice(choice_request)
+    API-->>UI: run_status=waiting_user
+    U->>UI: 点击选择/填写自定义
+    UI->>API: POST /trip-plans/{id}/choice-results
+    API->>S: user_choice 高可信写入
+    API->>A: 创建 AgentRun #2
+    A->>A: sufficiency_check
+    alt 信息足够
+      A-->>UI: candidate_routes
+    else 信息不足
+      A-->>UI: 下一组 ask_user_choice
+    end
+</div>
+          </div>
+          <h3>判断</h3>
+          <div class="decision" data-name="workflow_model">
+            <label class="option">
+              <input type="radio" name="workflow_model" value="approve_current" checked>
+              <div><strong>认可当前模型</strong><span>TripPlan 持续存在，AgentRun 分段执行，waiting_user 表示当前执行单元等待用户选择。</span></div>
+            </label>
+            <label class="option">
+              <input type="radio" name="workflow_model" value="needs_revision">
+              <div><strong>需要调整</strong><span>我认为会话结束、AgentRun 挂起或状态恢复方式还需要重新定义。</span></div>
+            </label>
+          </div>
+          <textarea data-field="workflow_model_notes" placeholder="如果需要调整，请写下你的理解。"></textarea>
+        </div>
+        <aside class="side"><div class="panel summary"><h3>本页产出</h3><p class="small">确认“持续会话 + 分段 AgentRun”的模型是否成立。</p></div></aside>
+      </div>
+    </section>
+
+    <section class="slide" data-title="字段分层">
+      <div class="grid">
+        <div class="panel pad">
+          <h2>context_state 字段分层</h2>
+          <p class="lead">当前草案把字段分为核心字段、偏好字段、元字段。核心字段决定是否能推荐。</p>
+          <table class="table">
+            <tr><th>层级</th><th>字段</th><th>说明</th></tr>
+            <tr><td>核心字段</td><td><span class="tag">activity_goal</span> <span class="tag">departure_area</span> <span class="tag">time_window</span> <span class="tag">transport_hint</span> <span class="tag">ability_hint</span></td><td>推荐充分条件主要依赖这些。</td></tr>
+            <tr><td>偏好字段</td><td><span class="tag">preference_tags</span> <span class="tag">avoid_tags</span> <span class="tag">terrain_tolerance</span> <span class="tag">scenery_preferences</span> <span class="tag">safety_priority</span> <span class="tag">supply_requirement</span></td><td>影响选择卡、召回加权、扣分和解释。</td></tr>
+            <tr><td>元字段</td><td><span class="tag">confirmed_fields</span> <span class="tag">missing_fields</span> <span class="tag">field_sources</span></td><td>用于可信度、展示、调试和恢复。</td></tr>
+          </table>
+          <h3>判断：本轮核心字段是否够用？</h3>
+          <div class="decision" data-name="core_fields">
+            <label class="option">
+              <input type="radio" name="core_fields" value="accept_current" checked>
+              <div><strong>够用</strong><span>本轮核心字段就用这 5 个，避免过度设计。</span></div>
+            </label>
+            <label class="option">
+              <input type="radio" name="core_fields" value="add_terrain_safety">
+              <div><strong>把路况/安全也纳入核心</strong><span>在户外推荐里 terrain_tolerance 或 safety_priority 应该阻塞推荐。</span></div>
+            </label>
+            <label class="option">
+              <input type="radio" name="core_fields" value="custom">
+              <div><strong>自定义核心字段</strong><span>我希望重新定义哪些字段阻塞推荐。</span></div>
+            </label>
+          </div>
+          <textarea data-field="core_fields_notes" placeholder="补充你希望加入/移除的字段。"></textarea>
+        </div>
+        <aside class="side"><div class="panel summary"><h3>当前倾向</h3><p class="small">保守建议：先只把 5 个现有实现字段作为核心，安全/路况按场景触发追问。</p></div></aside>
+      </div>
+    </section>
+
+    <section class="slide" data-title="推荐充分条件">
+      <div class="grid">
+        <div class="panel pad">
+          <h2>sufficiency_check 推荐充分条件</h2>
+          <p class="lead">这里决定系统什么时候停止追问、开始生成候选线路。</p>
+          <div class="diagram">
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> Collecting
+    Collecting --> WaitingUser: 缺少核心字段或冲突
+    WaitingUser --> Collecting: choice_result 写入 context_state
+    Collecting --> Recommendable: 满足推荐充分条件
+    Recommendable --> Recommended: route_retrieval + candidate_routes
+    Recommended --> FollowUp: 用户追问
+    FollowUp --> Collecting: 用户修改关键条件
+    FollowUp --> Recommended: 解释现有推荐
+</div>
+          </div>
+          <h3>请选择本轮充分条件</h3>
+          <div class="decision" data-name="sufficiency_rule">
+            <label class="option">
+              <input type="radio" name="sufficiency_rule" value="minimal_plus_one" checked>
+              <div><strong>推荐：目标 + 出发地 + 时间 + 交通或强度至少一个</strong><span>复用现有逻辑精神，少问一点，先给候选。</span></div>
+            </label>
+            <label class="option">
+              <input type="radio" name="sufficiency_rule" value="strict_all_core">
+              <div><strong>严格：5 个核心字段全部需要</strong><span>目标、出发地、时间、交通、强度都确认后才推荐。</span></div>
+            </label>
+            <label class="option">
+              <input type="radio" name="sufficiency_rule" value="scenario_based">
+              <div><strong>场景化：基础字段 + 风险场景补问</strong><span>看雪、野路、亲子等场景必须补路况/安全偏好。</span></div>
+            </label>
+          </div>
+          <textarea data-field="sufficiency_notes" placeholder="你对推荐充分条件的补充。"></textarea>
+        </div>
+        <aside class="side"><div class="panel summary"><h3>需要权衡</h3><ul class="mini-list"><li>问太少：推荐可能偏。</li><li>问太多：用户觉得慢。</li><li>场景化：实现略复杂，但户外更稳。</li></ul></div></aside>
+      </div>
+    </section>
+
+    <section class="slide" data-title="选择卡策略">
+      <div class="grid">
+        <div class="panel pad">
+          <h2>第一轮选择卡问什么</h2>
+          <p class="lead">一轮最多 3 个问题。第一轮不追求问完，只补足最关键的不确定性。</p>
+          <table class="table">
+            <tr><th>用户输入</th><th>建议第一轮选择卡</th></tr>
+            <tr><td>周末想出去走走</td><td>出发地、出行类型、时间窗口</td></tr>
+            <tr><td>成都周末想看雪，但别太危险</td><td>交通、强度、冰雪/路况接受程度</td></tr>
+            <tr><td>想带孩子轻松徒步</td><td>出发地、时间、交通；安全默认高优先级</td></tr>
+          </table>
+          <h3>选择第一轮策略</h3>
+          <div class="decision" data-name="first_round_strategy">
+            <label class="option">
+              <input type="radio" name="first_round_strategy" value="core_missing_first" checked>
+              <div><strong>缺什么核心问什么</strong><span>优先补核心字段，偏好字段后续再问。</span></div>
+            </label>
+            <label class="option">
+              <input type="radio" name="first_round_strategy" value="intent_scene_first">
+              <div><strong>先判断场景，再问核心</strong><span>先问“这次更像哪种出行”，再按场景追问交通/强度/安全。</span></div>
+            </label>
+            <label class="option">
+              <input type="radio" name="first_round_strategy" value="risk_first_for_outdoor">
+              <div><strong>户外安全优先</strong><span>任何模糊输入都先问强度和风险接受度。</span></div>
+            </label>
+          </div>
+          <textarea data-field="first_round_notes" placeholder="补充你认为第一轮必须问或不该问的问题。"></textarea>
+        </div>
+        <aside class="side"><div class="panel summary"><h3>当前限制</h3><p class="small">为了移动端体验，一轮选择卡最多 3 个问题，每个问题 2-4 个选项。</p></div></aside>
+      </div>
+    </section>
+
+    <section class="slide" data-title="控件与交互">
+      <div class="grid">
+        <div class="panel pad">
+          <h2>选择卡控件和前端交互</h2>
+          <p class="lead">确定本轮支持哪些控件，以及用户点击后的提交方式。</p>
+          <h3>控件类型</h3>
+          <div class="decision" data-name="choice_card_types">
+            <label class="option">
+              <input type="checkbox" name="choice_card_types" value="single_choice" checked>
+              <div><strong>single_choice</strong><span>交通、强度、风险等级等单选。</span></div>
+            </label>
+            <label class="option">
+              <input type="checkbox" name="choice_card_types" value="multi_choice" checked>
+              <div><strong>multi_choice</strong><span>风景偏好、想避开的标签等多选。</span></div>
+            </label>
+            <label class="option">
+              <input type="checkbox" name="choice_card_types" value="text_custom" checked>
+              <div><strong>text/custom</strong><span>用户自定义输入，避免选项覆盖不了真实需求。</span></div>
+            </label>
+            <label class="option">
+              <input type="checkbox" name="choice_card_types" value="range">
+              <div><strong>range</strong><span>距离、爬升、时长范围。本轮是否加入待定。</span></div>
+            </label>
+          </div>
+          <h3>提交方式</h3>
+          <div class="decision" data-name="submit_behavior">
+            <label class="option">
+              <input type="radio" name="submit_behavior" value="confirm_button" checked>
+              <div><strong>统一确认按钮</strong><span>单选、多选、自定义都先选，再点确认提交，避免误触。</span></div>
+            </label>
+            <label class="option">
+              <input type="radio" name="submit_behavior" value="single_auto_multi_confirm">
+              <div><strong>单选即提交，多选确认</strong><span>更快，但移动端误触风险更高。</span></div>
+            </label>
+          </div>
+          <textarea data-field="interaction_notes" placeholder="补充前端选择栏的交互要求。"></textarea>
+        </div>
+        <aside class="side"><div class="panel summary"><h3>建议</h3><p class="small">我倾向本轮先不做 range。距离/爬升可以先通过强度和偏好间接表达。</p></div></aside>
+      </div>
+    </section>
+
+    <section class="slide" data-title="恢复与返回">
+      <div class="grid">
+        <div class="panel pad">
+          <h2>恢复、ID 和返回数据</h2>
+          <p class="lead">这页决定历史恢复和前端展示接口的细节。</p>
+          <h3>choice_request_id</h3>
+          <div class="decision" data-name="choice_request_id">
+            <label class="option">
+              <input type="radio" name="choice_request_id" value="independent_uuid" checked>
+              <div><strong>独立 UUID</strong><span>语义清晰，和消息 ID 解耦，便于后续重试和过期。</span></div>
+            </label>
+            <label class="option">
+              <input type="radio" name="choice_request_id" value="assistant_message_id">
+              <div><strong>复用 assistant_message_id</strong><span>少一个 ID，但工具调用语义和消息语义绑定更紧。</span></div>
+            </label>
+          </div>
+          <h3>confirmed_context 返回范围</h3>
+          <div class="decision" data-name="confirmed_context_scope">
+            <label class="option">
+              <input type="radio" name="confirmed_context_scope" value="display_summary" checked>
+              <div><strong>返回可展示摘要</strong><span>前端只依赖展示字段，避免深度绑定内部 context_state。</span></div>
+            </label>
+            <label class="option">
+              <input type="radio" name="confirmed_context_scope" value="full_context_state">
+              <div><strong>返回完整 context_state</strong><span>前端调试更方便，但容易依赖内部结构。</span></div>
+            </label>
+            <label class="option">
+              <input type="radio" name="confirmed_context_scope" value="both">
+              <div><strong>两者都返回</strong><span>后端返回 display_context + raw_context_state。</span></div>
+            </label>
+          </div>
+          <h3>中途退出恢复</h3>
+          <div class="decision" data-name="resume_behavior">
+            <label class="option">
+              <input type="radio" name="resume_behavior" value="restore_latest_open_choice" checked>
+              <div><strong>恢复最近未完成选择卡</strong><span>TripPlan 保持 draft，用户回来继续选。</span></div>
+            </label>
+            <label class="option">
+              <input type="radio" name="resume_behavior" value="ask_again">
+              <div><strong>重新生成选择卡</strong><span>避免旧问题过期，但可能让用户觉得重复。</span></div>
+            </label>
+          </div>
+          <textarea data-field="recovery_notes" placeholder="补充恢复、ID、返回字段的要求。"></textarea>
+        </div>
+        <aside class="side"><div class="panel summary"><h3>当前建议</h3><ul class="mini-list"><li>choice_request_id 使用独立 UUID。</li><li>接口返回展示摘要，后端保留完整状态。</li><li>历史恢复最近未完成选择卡。</li></ul></div></aside>
+      </div>
+    </section>
+
+    <section class="slide" data-title="导出回答">
+      <div class="grid">
+        <div class="panel pad">
+          <h2>导出你的对齐回答</h2>
+          <p class="lead">点击生成 Markdown，检查内容后下载保存。保存后告诉 Agent “对齐完毕”。</p>
+          <div class="note">
+            建议保存路径：
+            <br />
+            <strong>docs/01-iterations/iteration-08-agent-v2-choice-based-requirement-convergence/alignment/iteration-08-alignment-response.md</strong>
+          </div>
+          <h3>总体补充</h3>
+          <textarea data-field="overall_notes" placeholder="任何未覆盖但你想补充的决策、约束或疑问。"></textarea>
+          <h3>Markdown 预览</h3>
+          <textarea id="exportPreview" class="export-box" readonly></textarea>
+        </div>
+        <aside class="side">
+          <div class="panel summary">
+            <h3>导出操作</h3>
+            <div class="actions">
+              <button type="button" onclick="renderExport()">生成 Markdown</button>
+              <button type="button" onclick="downloadMarkdown()">下载 Markdown</button>
+            </div>
+            <p class="small">如果浏览器阻止下载，请复制预览内容手动保存为 Markdown。</p>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <div class="controls">
+    <div class="controls-inner">
+      <div class="small" id="slideTitle">使用方式</div>
+      <div class="actions">
+        <button type="button" class="secondary" id="prevBtn" onclick="prevSlide()">上一页</button>
+        <button type="button" id="nextBtn" onclick="nextSlide()">下一页</button>
+        <button type="button" class="ghost" onclick="renderExport()">刷新导出预览</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    let index = 0;
+    const fileName = 'iteration-08-alignment-response.md';
+
+    function setSlide(next) {
+      index = Math.max(0, Math.min(slides.length - 1, next));
+      slides.forEach((slide, i) => slide.classList.toggle('active', i === index));
+      document.getElementById('pageNow').textContent = String(index + 1);
+      document.getElementById('pageTotal').textContent = String(slides.length);
+      document.getElementById('bar').style.width = `${((index + 1) / slides.length) * 100}%`;
+      document.getElementById('slideTitle').textContent = slides[index].dataset.title || '';
+      document.getElementById('prevBtn').disabled = index === 0;
+      document.getElementById('nextBtn').disabled = index === slides.length - 1;
+      if (index === slides.length - 1) renderExport();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function nextSlide() { setSlide(index + 1); }
+    function prevSlide() { setSlide(index - 1); }
+
+    function radioValue(name) {
+      const item = document.querySelector(`input[name="${name}"]:checked`);
+      return item ? item.value : '';
+    }
+
+    function checkboxValues(name) {
+      return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(item => item.value);
+    }
+
+    function textValue(field) {
+      const item = document.querySelector(`[data-field="${field}"]`);
+      return item ? item.value.trim() : '';
+    }
+
+    function line(label, value) {
+      if (Array.isArray(value)) return `- ${label}: ${value.length ? value.join(', ') : '未选择'}`;
+      return `- ${label}: ${value || '未填写'}`;
+    }
+
+    function renderExport() {
+      const now = new Date().toISOString();
+      const md = [
+        '# Iteration 08 Alignment Response',
+        '',
+        `Generated at: ${now}`,
+        'Source HTML: `docs/01-iterations/iteration-08-agent-v2-choice-based-requirement-convergence/alignment/iteration-08-alignment.html`',
+        '',
+        '## 1. 整体流程',
+        line('workflow_model', radioValue('workflow_model')),
+        line('workflow_model_notes', textValue('workflow_model_notes')),
+        '',
+        '## 2. context_state 字段分层',
+        line('core_fields', radioValue('core_fields')),
+        line('core_fields_notes', textValue('core_fields_notes')),
+        '',
+        '## 3. sufficiency_check 推荐充分条件',
+        line('sufficiency_rule', radioValue('sufficiency_rule')),
+        line('sufficiency_notes', textValue('sufficiency_notes')),
+        '',
+        '## 4. 第一轮选择卡策略',
+        line('first_round_strategy', radioValue('first_round_strategy')),
+        line('first_round_notes', textValue('first_round_notes')),
+        '',
+        '## 5. 选择卡控件与交互',
+        line('choice_card_types', checkboxValues('choice_card_types')),
+        line('submit_behavior', radioValue('submit_behavior')),
+        line('interaction_notes', textValue('interaction_notes')),
+        '',
+        '## 6. 恢复、ID 和返回数据',
+        line('choice_request_id', radioValue('choice_request_id')),
+        line('confirmed_context_scope', radioValue('confirmed_context_scope')),
+        line('resume_behavior', radioValue('resume_behavior')),
+        line('recovery_notes', textValue('recovery_notes')),
+        '',
+        '## 7. 总体补充',
+        textValue('overall_notes') || '无',
+        '',
+        '## Agent Processing Notes',
+        '- 用户说“对齐完毕”后，Agent 读取本文件。',
+        '- 本文件是反馈输入，不直接替代正式迭代文档。',
+        '- Agent 需要归纳、去重、检查冲突后，再更新正式 Markdown 文档。',
+        ''
+      ].join('\n');
+      document.getElementById('exportPreview').value = md;
+      return md;
+    }
+
+    function downloadMarkdown() {
+      const md = renderExport();
+      const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    document.addEventListener('input', () => {
+      if (index === slides.length - 1) renderExport();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.target && ['TEXTAREA', 'INPUT'].includes(event.target.tagName)) return;
+      if (event.key === 'ArrowRight') nextSlide();
+      if (event.key === 'ArrowLeft') prevSlide();
+    });
+
+    if (window.mermaid) {
+      window.mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: 'loose',
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#edf4f0',
+          primaryTextColor: '#17211b',
+          primaryBorderColor: '#127a56',
+          lineColor: '#60746a',
+          secondaryColor: '#f6f8f7',
+          tertiaryColor: '#ffffff',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif'
+        }
+      });
+      window.mermaid.run({ querySelector: '.mermaid' }).catch((error) => {
+        console.warn('Mermaid render failed, keeping source text.', error);
+      });
+    }
+
+    setSlide(0);
+  </script>
+</body>
+</html>

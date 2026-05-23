@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.features.trip_plans.schemas import (
     CandidateRouteDetailResponse,
+    ChoiceResultRequest,
     RoutePlanSnapshotDetailResponse,
     RoutePlanSnapshotListResponse,
     TripPlanConversationResponse,
@@ -19,6 +20,9 @@ from app.features.trip_plans.schemas import (
 from app.features.trip_plans.service import (
     AgentRunNotFoundError,
     CandidateRouteNotFoundError,
+    ChoiceRequestNotFoundError,
+    ChoiceRequestNotActiveError,
+    InvalidChoiceResultError,
     RoutePlanSnapshotExistsError,
     RoutePlanSnapshotNotFoundError,
     TripPlanClosedError,
@@ -27,6 +31,7 @@ from app.features.trip_plans.service import (
     get_candidate_detail,
     get_route_plan_snapshot_detail,
     get_trip_plan_conversation,
+    handle_choice_results,
     handle_user_message,
     list_trip_plans,
     list_route_plan_snapshots,
@@ -98,6 +103,71 @@ def post_trip_plan_message(
         )
     except Exception as exc:
         logger.exception("Agent workflow failed")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "code": "AGENT_ERROR",
+                "message": f"Agent 处理失败：{exc}",
+            },
+        )
+
+
+@router.post("/trip-plans/{trip_plan_id}/choice-results", response_model=TripPlanMessagePostResponse)
+def post_trip_plan_choice_results(
+    trip_plan_id: str,
+    payload: ChoiceResultRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        return handle_choice_results(
+            db,
+            current_user,
+            trip_plan_id=trip_plan_id,
+            payload=payload,
+        )
+    except TripPlanClosedError:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "code": "TRIP_PLAN_CLOSED",
+                "message": "Trip plan is closed",
+            },
+        )
+    except TripPlanNotFoundError:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "code": "TRIP_PLAN_NOT_FOUND",
+                "message": "Trip plan not found",
+            },
+        )
+    except ChoiceRequestNotFoundError:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "code": "CHOICE_REQUEST_NOT_FOUND",
+                "message": "Choice request not found",
+            },
+        )
+    except ChoiceRequestNotActiveError:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "code": "CHOICE_REQUEST_NOT_ACTIVE",
+                "message": "Choice request is not active",
+            },
+        )
+    except InvalidChoiceResultError:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "code": "INVALID_CHOICE_RESULT",
+                "message": "Invalid choice result",
+            },
+        )
+    except Exception as exc:
+        logger.exception("Choice result workflow failed")
         return JSONResponse(
             status_code=500,
             content={

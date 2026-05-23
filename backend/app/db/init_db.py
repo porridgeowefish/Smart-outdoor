@@ -17,6 +17,7 @@ def init_db() -> None:
     """根据 ORM 模型定义创建所有数据库表（IF NOT EXISTS 语义）。"""
     Base.metadata.create_all(bind=engine)
     _ensure_iteration_07_columns()
+    _ensure_iteration_08_columns()
 
 
 def _ensure_iteration_07_columns() -> None:
@@ -70,6 +71,24 @@ def _ensure_iteration_07_columns() -> None:
             for name, column_type in table_additions.items():
                 if name not in existing:
                     connection.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {column_type}"))
+
+
+def _ensure_iteration_08_columns() -> None:
+    """Best-effort additive schema sync for choice-based TripPlan messages."""
+    inspector = inspect(engine)
+    if not inspector.has_table("trip_plan_messages"):
+        return
+    existing = {column["name"] for column in inspector.get_columns("trip_plan_messages")}
+    additions = {
+        "content_type": "VARCHAR(32) DEFAULT 'text'",
+        "payload": _json_type(),
+    }
+    with engine.begin() as connection:
+        for name, column_type in additions.items():
+            if name not in existing:
+                connection.execute(
+                    text(f"ALTER TABLE trip_plan_messages ADD COLUMN {name} {column_type}")
+                )
 
 
 def _json_type() -> str:

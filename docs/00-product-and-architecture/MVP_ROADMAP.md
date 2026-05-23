@@ -2,7 +2,7 @@
 
 Status: active
 Owner: project maintainer
-Last reviewed: 2026-05-08
+Last reviewed: 2026-05-20
 Source of truth: migrated from `docs/99-archive/backend-docs-legacy/MVP_IMPLEMENTATION_SLICES.md`; detailed delivery scope lives in `docs/01-iterations/`.
 
 ## 开发原则
@@ -98,6 +98,16 @@ PATCH /api/me
 POST /api/routes/upload
 GET /api/routes
 GET /api/routes/{route_id}
+```
+
+### Iteration 08 Agent V2 Choice-based Requirement Convergence
+
+本轮先进入对齐与文档积累阶段。目标是把“出去走走”的自然语言入口升级为选择式需求收敛：Agent 先把不确定信息转化为可点击、可确认、可修改的选择卡，再把用户确认结果沉淀进 `context_state`，达到推荐条件后进入线路召回。
+
+详细范围以当前迭代目录为准：
+
+```text
+docs/01-iterations/iteration-08-agent-v2-choice-based-requirement-convergence/
 ```
 
 ## 每轮完成定义

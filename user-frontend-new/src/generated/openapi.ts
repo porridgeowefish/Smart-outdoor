@@ -296,6 +296,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/trip-plans/{trip_plan_id}/choice-results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Trip Plan Choice Results */
+        post: operations["post_trip_plan_choice_results_api_trip_plans__trip_plan_id__choice_results_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/agent-runs/{agent_run_id}/events": {
         parameters: {
             query?: never;
@@ -543,6 +560,80 @@ export interface components {
             track_preview?: {
                 [key: string]: unknown;
             } | null;
+        };
+        /** ChoiceAnswer */
+        ChoiceAnswer: {
+            /** Field */
+            field: string;
+            /** Value */
+            value: string | string[];
+            /** Label */
+            label: string | string[];
+            /** Custom Text */
+            custom_text?: string | null;
+        };
+        /** ChoiceOption */
+        ChoiceOption: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
+            /** Description */
+            description?: string | null;
+        };
+        /** ChoiceQuestion */
+        ChoiceQuestion: {
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "single_choice" | "multi_choice" | "text";
+            /** Field */
+            field: string;
+            /** Question */
+            question: string;
+            /** Header */
+            header: string;
+            /** Options */
+            options?: components["schemas"]["ChoiceOption"][];
+            /**
+             * Multi Select
+             * @default false
+             */
+            multi_select: boolean;
+            /**
+             * Allow Custom
+             * @default true
+             */
+            allow_custom: boolean;
+        };
+        /** ChoiceRequest */
+        ChoiceRequest: {
+            /** Choice Request Id */
+            choice_request_id: string;
+            /** Questions */
+            questions: components["schemas"]["ChoiceQuestion"][];
+        };
+        /** ChoiceResultRequest */
+        ChoiceResultRequest: {
+            /** Choice Request Id */
+            choice_request_id: string;
+            /** Answers */
+            answers: components["schemas"]["ChoiceAnswer"][];
+        };
+        /** ConfirmedContext */
+        ConfirmedContext: {
+            /** Items */
+            items?: components["schemas"]["ConfirmedContextItem"][];
+        };
+        /** ConfirmedContextItem */
+        ConfirmedContextItem: {
+            /** Field */
+            field: string;
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -946,6 +1037,10 @@ export interface components {
             agent_run_id: string;
             /** Run Status */
             run_status: string;
+            choice_request?: components["schemas"]["ChoiceRequest"] | null;
+            confirmed_context?: components["schemas"]["ConfirmedContext"];
+            /** Missing Fields */
+            missing_fields?: string[];
             /** Candidate Routes */
             candidate_routes: components["schemas"]["CandidateRouteItem"][];
         };
@@ -964,6 +1059,16 @@ export interface components {
             role: string;
             /** Content */
             content: string;
+            /**
+             * Content Type
+             * @default text
+             * @enum {string}
+             */
+            content_type: "text" | "choice_request" | "choice_result";
+            /** Payload */
+            payload?: {
+                [key: string]: unknown;
+            } | null;
             /** Created At */
             created_at?: string | null;
         };
@@ -1609,6 +1714,43 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["TripPlanMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripPlanMessagePostResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_trip_plan_choice_results_api_trip_plans__trip_plan_id__choice_results_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                trip_plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChoiceResultRequest"];
             };
         };
         responses: {

@@ -2,7 +2,7 @@
 
 Status: active
 Owner: project maintainer
-Last reviewed: 2026-05-08
+Last reviewed: 2026-05-20
 Source of truth: iteration subdirectories define delivery scope.
 
 本目录按用户闭环组织交付文档。每一轮迭代必须能独立验收。
@@ -18,6 +18,7 @@ Source of truth: iteration subdirectories define delivery scope.
 | 05 | Snapshot / 我的规划 | [iteration-05-snapshot-my-plans](./iteration-05-snapshot-my-plans/README.md) |
 | 06 | Ability Profile | [iteration-06-ability-profile](./iteration-06-ability-profile/README.md) |
 | 07 | Object Storage + Image Assets | [iteration-07-object-storage-image-assets](./iteration-07-object-storage-image-assets/README.md) |
+| 08 | Agent V2 Choice-based Requirement Convergence | [iteration-08-agent-v2-choice-based-requirement-convergence](./iteration-08-agent-v2-choice-based-requirement-convergence/README.md) |
 
 ## 每轮必备文档
 

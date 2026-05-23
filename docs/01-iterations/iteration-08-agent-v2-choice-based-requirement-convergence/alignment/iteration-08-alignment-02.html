@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Iteration 08 对齐工作台 02</title>
+  <style>
+    :root {
+      --bg: #f5f7f6;
+      --panel: #ffffff;
+      --ink: #17211b;
+      --muted: #66736b;
+      --line: #dce6e0;
+      --soft: #eef5f1;
+      --brand: #117a59;
+      --blue: #145f82;
+      --amber: #8a5a00;
+      --red: #9d3333;
+      --shadow: 0 12px 32px rgba(20, 35, 27, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+      line-height: 1.5;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(12px);
+    }
+    .topbar {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .title { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .badge {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--brand);
+      color: #fff;
+      font-weight: 900;
+    }
+    h1 { margin: 0; font-size: 18px; letter-spacing: 0; }
+    .subtitle { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+    .progress { display: flex; align-items: center; gap: 8px; min-width: 260px; }
+    .bar { flex: 1; height: 8px; border-radius: 999px; background: #dce8e2; overflow: hidden; }
+    .bar span { display: block; height: 100%; width: 0; background: var(--brand); border-radius: inherit; transition: width .18s; }
+    .count { width: 58px; color: var(--muted); font-size: 12px; text-align: right; }
+    main { max-width: 1240px; margin: 0 auto; padding: 20px 18px 116px; }
+    .slide { display: none; min-height: calc(100vh - 170px); }
+    .slide.active { display: block; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+    .panel { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); box-shadow: var(--shadow); }
+    .pad { padding: 20px; }
+    .side { position: sticky; top: 76px; display: grid; gap: 12px; }
+    h2 { margin: 0 0 12px; font-size: 24px; letter-spacing: 0; }
+    h3 { margin: 18px 0 9px; font-size: 16px; letter-spacing: 0; }
+    p { margin: 0 0 12px; }
+    .lead { font-size: 15px; color: #34443a; }
+    .note { border-left: 4px solid var(--brand); background: var(--soft); border-radius: 4px; padding: 11px 12px; font-size: 13px; }
+    .warn { border-left-color: var(--amber); background: #fff8e8; }
+    .danger { border-left-color: var(--red); background: #fff0f0; }
+    .flow {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfb;
+      padding: 14px;
+      overflow: auto;
+    }
+    svg { max-width: 100%; height: auto; }
+    .table { width: 100%; border-collapse: collapse; margin: 10px 0 14px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    .table th, .table td { border-bottom: 1px solid var(--line); padding: 9px; text-align: left; vertical-align: top; font-size: 13px; }
+    .table th { background: var(--soft); }
+    .table tr:last-child td { border-bottom: 0; }
+    .decision { display: grid; gap: 9px; margin: 12px 0; }
+    .two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .option {
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr);
+      gap: 9px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fff;
+      cursor: pointer;
+    }
+    .option:hover { border-color: #a9c2b6; background: #fbfdfc; }
+    .option input { margin-top: 3px; }
+    .option strong { display: block; margin-bottom: 2px; font-size: 13px; }
+    .option span { display: block; color: var(--muted); font-size: 12px; }
+    textarea, input[type="text"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 11px;
+      font: inherit;
+      background: #fff;
+      color: var(--ink);
+      outline: none;
+    }
+    textarea { min-height: 88px; resize: vertical; }
+    textarea:focus, input[type="text"]:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(17, 122, 89, .12); }
+    .mini-list { display: grid; gap: 7px; padding: 0; margin: 0; list-style: none; }
+    .mini-list li { border: 1px solid var(--line); border-radius: 8px; padding: 8px 9px; background: #fff; color: var(--muted); font-size: 12px; }
+    .tag { display: inline-flex; min-height: 22px; align-items: center; border-radius: 6px; background: var(--soft); padding: 1px 7px; color: #244133; font-size: 12px; font-weight: 800; }
+    .controls {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 20;
+      border-top: 1px solid var(--line);
+      background: rgba(255, 255, 255, .94);
+      backdrop-filter: blur(12px);
+    }
+    .controls-inner { max-width: 1240px; margin: 0 auto; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    button {
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: var(--brand);
+      color: #fff;
+      padding: 10px 14px;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    button.secondary { background: #fff; color: var(--ink); border-color: var(--line); }
+    button.ghost { background: transparent; color: var(--brand); }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .small { color: var(--muted); font-size: 12px; }
+    .export-box { min-height: 360px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; line-height: 1.45; }
+    @media (max-width: 980px) {
+      .topbar { flex-direction: column; align-items: stretch; }
+      .progress { min-width: 0; width: 100%; }
+      .grid { grid-template-columns: 1fr; }
+      .side { position: static; }
+      .two, .three { grid-template-columns: 1fr; }
+      main { padding-bottom: 150px; }
+      .controls-inner { flex-direction: column; align-items: stretch; }
+      .actions { width: 100%; }
+      button { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="topbar">
+      <div class="title">
+        <div class="badge">08</div>
+        <div>
+          <h1>Iteration 08 对齐工作台 02</h1>
+          <p class="subtitle">一次性覆盖剩余关键决策：sufficiency、选择卡、交互、错误、测试。</p>
+        </div>
+      </div>
+      <div class="progress"><div class="bar"><span id="bar"></span></div><div class="count"><span id="now">1</span>/<span id="total">7</span></div></div>
+    </div>
+  </header>
+
+  <main>
+    <section class="slide active" data-title="范围总览">
+      <div class="grid">
+        <div class="panel pad">
+          <h2>本次 HTML 覆盖范围</h2>
+          <p class="lead">上一轮已经确定主架构。这一轮集中把实现前剩余决策一次性压实，问题会更密集。</p>
+          <div class="note">
+            导出文件建议保存为：
+            <br><strong>docs/01-iterations/iteration-08-agent-v2-choice-based-requirement-convergence/alignment/iteration-08-alignment-02-response.md</strong>
+          </div>
+          <table class="table">
+            <tr><th>主题</th><th>本次需要判断</th></tr>
+            <tr><td>场景化 sufficiency</td><td>风险场景触发条件、必问字段、是否允许跳过。</td></tr>
+            <tr><td>选择卡文案/选项</td><td>交通、路况、安全、风景、避开项、补给等选项。</td></tr>
+            <tr><td>前端交互</td><td>逐题呈现方式、修改上一题、已确认摘要、提交按钮。</td></tr>
+            <tr><td>错误和过期</td><td>旧 choice_request、重复提交、部分提交、无效值。</td></tr>
+            <tr><td>测试样例</td><td>短输入、看雪但安全、亲子、新手、冲突输入、推荐后修改。</td></tr>
+            <tr><td>实现边界</td><td>本轮做什么、不做什么，避免开始编码时扩范围。</td></tr>
+          </table>
+          <h3>整体策略确认</h3>
+          <div class="decision two">
+            <label class="option"><input type="radio" name="overall_strategy" value="approve_dense_complete" checked><div><strong>认可：本轮一次性压实剩余决策</strong><span>回答导出后即可更新正式文档，进入实现前准备。</span></div></label>
+            <label class="option"><input type="radio" name="overall_strategy" value="need_more_rounds"><div><strong>仍需继续拆分</strong><span>部分主题需要后续单独 HTML 再对齐。</span></div></label>
+          </div>
+          <textarea data-field="overall_strategy_notes" placeholder="如果仍需拆分，请写明哪些主题还不能一次性决定。"></textarea>
+        </div>
+        <aside class="side">
+          <div class="panel pad">
+            <h3>已定前提</h3>
+            <ul class="mini-list">
+              <li>ability_hint 是本次偏好，不是基础核心字段。</li>
+              <li>能力匹配主要来自用户能力画像。</li>
+              <li>本轮不做 range 控件。</li>
+              <li>confirmed_context 返回展示摘要。</li>
+              <li>choice_request_id 使用独立 UUID。</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Sufficiency">
+      <div class="grid">
+        <div class="panel pad">
+          <h2>场景化 sufficiency 触发表</h2>
+          <p class="lead">基础推荐条件：activity_goal + departure_area + time_window + transport_hint。风险场景再补问。</p>
+          <div class="flow">
+            <svg width="940" height="260" viewBox="0 0 940 260" role="img" aria-label="状态机">
+              <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#60746a"/></marker></defs>
+              <rect x="20" y="24" width="150" height="54" rx="8" fill="#eef5f1" stroke="#117a59"/><text x="95" y="56" text-anchor="middle" font-size="14">收集基础字段</text>
+              <rect x="250" y="24" width="150" height="54" rx="8" fill="#eef5f1" stroke="#117a59"/><text x="325" y="56" text-anchor="middle" font-size="14">识别风险场景</text>
+              <rect x="480" y="24" width="150" height="54" rx="8" fill="#fff8e8" stroke="#8a5a00"/><text x="555" y="56" text-anchor="middle" font-size="14">补问安全/路况</text>
+              <rect x="710" y="24" width="150" height="54" rx="8" fill="#eaf3fb" stroke="#145f82"/><text x="785" y="56" text-anchor="middle" font-size="14">生成推荐</text>
+              <line x1="170" y1="51" x2="250" y2="51" stroke="#60746a" stroke-width="2" marker-end="url(#arrow)"/>
+              <line x1="400" y1="51" x2="480" y2="51" stroke="#60746a" stroke-width="2" marker-end="url(#arrow)"/>
+              <line x1="630" y1="51" x2="710" y2="51" stroke="#60746a" stroke-width="2" marker-end="url(#arrow)"/>
+              <path d="M400 78 C430 140, 650 140, 710 78" fill="none" stroke="#60746a" stroke-width="2" marker-end="url(#arrow)"/>
+              <text x="560" y="134" text-anchor="middle" font-size="13" fill="#66736b">无风险场景可跳过补问</text>
+              <rect x="20" y="170" width="840" height="58" rx="8" fill="#fff" stroke="#dce6e0"/>
+              <text x="40" y="194" font-size="13">风险场景示例：看雪/冰雪路、野路/无明显路径、亲子/新手、安全优先、无补给/长距离、天气敏感。</text>
+              <text x="40" y="216" font-size="13">阻塞字段：terrain_tolerance 或 safety_priority；特定补给场景可补 supply_requirement。</text>
+            </svg>
+          </div>
+          <h3>1. 风险场景触发规则</h3>
+          <div class="decision two">
+            <label class="option"><input type="radio" name="risk_trigger_scope" value="listed_only" checked><div><strong>只用明确触发词</strong><span>雪/冰雪路/野路/亲子/新手/安全优先/补给缺口等明确出现才加问。</span></div></label>
+            <label class="option"><input type="radio" name="risk_trigger_scope" value="broad_llm_infer"><div><strong>允许 LLM 推断风险</strong><span>用户语义隐含风险时也可以加问，但需要可解释 reason。</span></div></label>
+          </div>
+          <h3>2. 风险场景必问字段</h3>
+          <div class="decision three">
+            <label class="option"><input type="radio" name="risk_required_fields" value="terrain_or_safety" checked><div><strong>terrain 或 safety 至少一个</strong><span>轻量，避免问太多。</span></div></label>
+            <label class="option"><input type="radio" name="risk_required_fields" value="terrain_and_safety"><div><strong>terrain 和 safety 都要</strong><span>更稳，但交互更长。</span></div></label>
+            <label class="option"><input type="radio" name="risk_required_fields" value="scenario_specific"><div><strong>按场景决定</strong><span>雪问 terrain，亲子问 safety，补给场景问 supply。</span></div></label>
+          </div>
+          <h3>3. 用户是否可以跳过风险补问</h3>
+          <div class="decision two">
+            <label class="option"><input type="radio" name="risk_skip_policy" value="no_skip_for_blocking" checked><div><strong>阻塞问题不可跳过</strong><span>风险场景必须确认后才推荐。</span></div></label>
+            <label class="option"><input type="radio" name="risk_skip_policy" value="allow_skip_with_safe_default"><div><strong>允许跳过，但用安全默认</strong><span>跳过时写入 safety_priority=high。</span></div></label>
+          </div>
+          <textarea data-field="sufficiency_detail_notes" placeholder="补充场景化 sufficiency 的具体要求。"></textarea>
+        </div>
+        <aside class="side"><div class="panel pad"><h3>建议</h3><p class="small">我建议：明确触发词 + terrain/safety 至少一个 + 阻塞问题不可跳过。这样可测且保守。</p></div></aside>
+      </div>
+    </section>
+
+    <section class="slide" data-title="选择卡选项">
+      <div class="grid">
+        <div class="panel pad">
+          <h2>选择卡文案和选项</h2>
+          <p class="lead">确认本轮内置选项。所有偏好题都允许“其它/补充信息”，返回真实文本。</p>
+          <table class="table">
+            <tr><th>字段</th><th>问题文案</th><th>建议选项</th><th>控件</th></tr>
+            <tr><td>transport_hint</td><td>这次交通更倾向哪种？</td><td>自驾 / 公共交通 / 都可以，帮我权衡</td><td>single_choice + custom</td></tr>
+            <tr><td>terrain_tolerance</td><td>路况接受程度怎样？</td><td>尽量成熟路线 / 可接受少量复杂路况 / 可以接受明显野路但要成熟线路</td><td>single_choice + custom</td></tr>
+            <tr><td>safety_priority</td><td>安全和风景挑战怎么取舍？</td><td>安全优先 / 平衡体验 / 可以接受挑战但要证据充分</td><td>single_choice + custom</td></tr>
+            <tr><td>scenery_preferences</td><td>更想要哪些景观？</td><td>雪景 / 森林 / 开阔山脊 / 溪流瀑布 / 日出云海</td><td>multi_choice + custom</td></tr>
+            <tr><td>avoid_tags</td><td>这次想避开什么？</td><td>冰雪路 / 野路 / 高爬升 / 太远 / 人太多 / 补给少</td><td>multi_choice + custom</td></tr>
+            <tr><td>supply_requirement</td><td>补给要求怎样？</td><td>沿途最好有补给 / 可自带补给 / 不确定，帮我保守处理</td><td>single_choice + custom</td></tr>
+          </table>
+          <h3>1. 是否接受这组选项作为本轮内置默认</h3>
+          <div class="decision two">
+            <label class="option"><input type="radio" name="default_options_policy" value="accept_defaults" checked><div><strong>接受</strong><span>先按这组默认选项实现，后续再根据使用反馈调整。</span></div></label>
+            <label class="option"><input type="radio" name="default_options_policy" value="needs_changes"><div><strong>需要调整</strong><span>选项或文案需要改。</span></div></label>
+          </div>
+          <h3>2. 文案风格</h3>
+          <div class="decision three">
+            <label class="option"><input type="radio" name="copy_tone" value="concise_practical" checked><div><strong>简洁实用</strong><span>偏工具感，少拟人。</span></div></label>
+            <label class="option"><input type="radio" name="copy_tone" value="friendly_outdoor"><div><strong>户外搭子</strong><span>更自然，但保持克制。</span></div></label>
+            <label class="option"><input type="radio" name="copy_tone" value="safety_first"><div><strong>安全优先</strong><span>更强调核实和保守。</span></div></label>
+          </div>
+          <textarea data-field="choice_options_notes" placeholder="写下需要新增、删除或改名的选项。"></textarea>
+        </div>
+        <aside class="side"><div class="panel pad"><h3>落地影响</h3><ul class="mini-list"><li>这些选项会进入 API_CONTRACT。</li><li>测试会校验 value 只能来自选项或 custom。</li><li>后端写入标准字段，前端展示 label。</li></ul></div></aside>
+      </div>
+    </section>
+
+    <section class="slide" data-title="前端交互">
+      <div class="grid">
+        <div class="panel pad">
+          <h2>前端选择卡逐步呈现</h2>
+          <p class="lead">虽然一个 ask_user_choice 最多 3 个问题，但前端需要逐步呈现，避免一次铺开。</p>
+          <div class="flow">
+            <svg width="940" height="210" viewBox="0 0 940 210" role="img" aria-label="局部翻页">
+              <rect x="30" y="30" width="250" height="130" rx="10" fill="#fff" stroke="#117a59"/>
+              <text x="155" y="62" text-anchor="middle" font-size="15" font-weight="700">问题 1 / 3</text>
+              <text x="155" y="92" text-anchor="middle" font-size="13">这次交通更倾向哪种？</text>
+              <rect x="60" y="112" width="190" height="28" rx="6" fill="#eef5f1" stroke="#dce6e0"/><text x="155" y="131" text-anchor="middle" font-size="12">自驾</text>
+              <rect x="345" y="30" width="250" height="130" rx="10" fill="#fff" stroke="#dce6e0"/>
+              <text x="470" y="62" text-anchor="middle" font-size="15" font-weight="700">问题 2 / 3</text>
+              <text x="470" y="92" text-anchor="middle" font-size="13">路况接受程度怎样？</text>
+              <rect x="375" y="112" width="190" height="28" rx="6" fill="#f7faf8" stroke="#dce6e0"/><text x="470" y="131" text-anchor="middle" font-size="12">成熟路线优先</text>
+              <rect x="660" y="30" width="250" height="130" rx="10" fill="#fff" stroke="#dce6e0"/>
+              <text x="785" y="62" text-anchor="middle" font-size="15" font-weight="700">问题 3 / 3</text>
+              <text x="785" y="92" text-anchor="middle" font-size="13">想避开什么？</text>
+              <rect x="690" y="112" width="190" height="28" rx="6" fill="#f7faf8" stroke="#dce6e0"/><text x="785" y="131" text-anchor="middle" font-size="12">冰雪路 / 野路</text>
+            </svg>
+          </div>
+          <h3>1. 呈现方式</h3>
+          <div class="decision three">
+            <label class="option"><input type="radio" name="presentation_mode" value="local_carousel" checked><div><strong>局部卡片平移</strong><span>当前消息内左右切换问题。</span></div></label>
+            <label class="option"><input type="radio" name="presentation_mode" value="single_question_stack"><div><strong>单题堆叠</strong><span>回答一题后下一题出现在下面。</span></div></label>
+            <label class="option"><input type="radio" name="presentation_mode" value="modal_stepper"><div><strong>弹层 Stepper</strong><span>更聚焦，但打断聊天流。</span></div></label>
+          </div>
+          <h3>2. 是否允许返回修改上一题</h3>
+          <div class="decision two">
+            <label class="option"><input type="radio" name="allow_previous_edit" value="yes" checked><div><strong>允许</strong><span>提交前可返回修改，提交后走新 choice_result 覆盖。</span></div></label>
+            <label class="option"><input type="radio" name="allow_previous_edit" value="before_submit_only"><div><strong>仅提交前允许</strong><span>提交后只能发新消息修改。</span></div></label>
+          </div>
+          <h3>3. 已确认摘要位置</h3>
+          <div class="decision three">
+            <label class="option"><input type="radio" name="summary_location" value="above_input" checked><div><strong>输入框上方</strong><span>始终可见，辅助继续对话。</span></div></label>
+            <label class="option"><input type="radio" name="summary_location" value="inside_latest_assistant"><div><strong>最近助手消息内</strong><span>上下文清楚，但滚动后不可见。</span></div></label>
+            <label class="option"><input type="radio" name="summary_location" value="top_panel"><div><strong>顶部折叠面板</strong><span>信息密度高，但实现稍复杂。</span></div></label>
+          </div>
+          <textarea data-field="frontend_interaction_notes" placeholder="补充前端交互细节。"></textarea>
+        </div>
+        <aside class="side"><div class="panel pad"><h3>建议</h3><p class="small">建议：局部卡片平移 + 提交前可返回 + 已确认摘要放输入框上方。</p></div></aside>
+      </div>
+    </section>
+
+    <section class="slide" data-title="错误策略">
+      <div class="grid">
+        <div class="panel pad">
+          <h2>接口错误、过期和重复提交</h2>
+          <p class="lead">选择结果是结构化工具返回，所以错误策略要比普通消息更明确。</p>
+          <table class="table">
+            <tr><th>情况</th><th>建议错误码</th><th>行为</th></tr>
+            <tr><td>choice_request_id 不存在/不属于用户/不属于 TripPlan</td><td>CHOICE_REQUEST_NOT_FOUND</td><td>404，不泄露资源存在性。</td></tr>
+            <tr><td>choice_request 已被新问题替代</td><td>CHOICE_REQUEST_STALE</td><td>409，前端刷新会话并展示最新选择卡。</td></tr>
+            <tr><td>重复提交同一个 choice_request</td><td>CHOICE_REQUEST_ALREADY_ANSWERED</td><td>409，前端刷新会话。</td></tr>
+            <tr><td>field 不在白名单</td><td>INVALID_CHOICE_RESULT</td><td>400。</td></tr>
+            <tr><td>value 非 options 且不允许 custom</td><td>INVALID_CHOICE_RESULT</td><td>400。</td></tr>
+            <tr><td>部分提交</td><td>待定</td><td>本页决策。</td></tr>
+          </table>
+          <h3>1. 过期定义</h3>
+          <div class="decision two">
+            <label class="option"><input type="radio" name="stale_definition" value="newer_choice_request" checked><div><strong>有更新 choice_request 即过期</strong><span>同一 TripPlan 下只允许回答最新未完成请求。</span></div></label>
+            <label class="option"><input type="radio" name="stale_definition" value="no_stale_until_answered"><div><strong>不主动过期</strong><span>旧请求没回答前一直有效。</span></div></label>
+          </div>
+          <h3>2. 部分提交策略</h3>
+          <div class="decision three">
+            <label class="option"><input type="radio" name="partial_submit_policy" value="reject" checked><div><strong>拒绝部分提交</strong><span>一个 choice_request 的必答问题必须一次提交。</span></div></label>
+            <label class="option"><input type="radio" name="partial_submit_policy" value="allow_save_partial"><div><strong>允许保存部分</strong><span>复杂，但用户可分次回答。</span></div></label>
+            <label class="option"><input type="radio" name="partial_submit_policy" value="only_optional_missing"><div><strong>只允许缺可选题</strong><span>需要标记 required。</span></div></label>
+          </div>
+          <h3>3. choice_request 是否需要 expires_at</h3>
+          <div class="decision two">
+            <label class="option"><input type="radio" name="choice_expiry" value="no_time_expiry" checked><div><strong>本轮不做时间过期</strong><span>只按是否被新请求替代判断。</span></div></label>
+            <label class="option"><input type="radio" name="choice_expiry" value="add_expires_at"><div><strong>增加 expires_at</strong><span>更严谨，但历史恢复可能复杂。</span></div></label>
+          </div>
+          <textarea data-field="error_policy_notes" placeholder="补充错误和过期策略。"></textarea>
+        </div>
+        <aside class="side"><div class="panel pad"><h3>建议</h3><p class="small">建议本轮：只允许回答最新 choice_request；拒绝部分提交；不做时间过期。</p></div></aside>
+      </div>
+    </section>
+
+    <section class="slide" data-title="测试与边界">
+      <div class="grid">
+        <div class="panel pad">
+          <h2>测试样例和实现边界</h2>
+          <p class="lead">实现前最后收口，避免测试漏场景或本轮扩范围。</p>
+          <h3>测试样例选择</h3>
+          <div class="decision two">
+            <label class="option"><input type="checkbox" name="test_cases" value="short_walk" checked><div><strong>短输入</strong><span>“周末想出去走走”触发基础字段填空。</span></div></label>
+            <label class="option"><input type="checkbox" name="test_cases" value="snow_safe" checked><div><strong>看雪但安全</strong><span>触发 terrain_tolerance / safety_priority。</span></div></label>
+            <label class="option"><input type="checkbox" name="test_cases" value="family_easy" checked><div><strong>亲子轻松</strong><span>触发安全优先和低强度偏好。</span></div></label>
+            <label class="option"><input type="checkbox" name="test_cases" value="conflict" checked><div><strong>冲突需求</strong><span>“轻松但高强度爬升”触发澄清。</span></div></label>
+            <label class="option"><input type="checkbox" name="test_cases" value="followup_modify" checked><div><strong>推荐后修改</strong><span>“换更轻松的”重新收敛或召回。</span></div></label>
+            <label class="option"><input type="checkbox" name="test_cases" value="stale_choice" checked><div><strong>过期 choice_request</strong><span>旧请求提交返回 409。</span></div></label>
+          </div>
+          <h3>本轮明确不做</h3>
+          <div class="decision two">
+            <label class="option"><input type="checkbox" name="out_of_scope" value="range_control" checked><div><strong>range 控件</strong><span>距离/爬升/时长范围暂不做。</span></div></label>
+            <label class="option"><input type="checkbox" name="out_of_scope" value="rag" checked><div><strong>RAG 标签知识库</strong><span>留到 Iteration 09。</span></div></label>
+            <label class="option"><input type="checkbox" name="out_of_scope" value="langgraph" checked><div><strong>LangGraph 工作流</strong><span>留到后续迭代。</span></div></label>
+            <label class="option"><input type="checkbox" name="out_of_scope" value="real_sse" checked><div><strong>真实实时 SSE</strong><span>本轮不改成边执行边推送。</span></div></label>
+            <label class="option"><input type="checkbox" name="out_of_scope" value="ability_profile_write" checked><div><strong>改写能力画像</strong><span>本轮不通过对话更新长期能力画像。</span></div></label>
+            <label class="option"><input type="checkbox" name="out_of_scope" value="new_choice_table" checked><div><strong>独立 choices 表</strong><span>先用 message payload。</span></div></label>
+          </div>
+          <h3>实现顺序</h3>
+          <div class="decision three">
+            <label class="option"><input type="radio" name="implementation_order" value="backend_first" checked><div><strong>后端契约先行</strong><span>Schema/API/测试先落，再接前端。</span></div></label>
+            <label class="option"><input type="radio" name="implementation_order" value="frontend_mock_first"><div><strong>前端 mock 先行</strong><span>先验证交互，再接真实接口。</span></div></label>
+            <label class="option"><input type="radio" name="implementation_order" value="vertical_slice"><div><strong>纵向薄切片</strong><span>一个 choice_request 从后到前打通。</span></div></label>
+          </div>
+          <textarea data-field="test_boundary_notes" placeholder="补充测试样例或实现边界。"></textarea>
+        </div>
+        <aside class="side"><div class="panel pad"><h3>建议</h3><p class="small">建议实现顺序：后端契约和测试先行，再做前端选择栏，最后做真实 LLM 兼容。</p></div></aside>
+      </div>
+    </section>
+
+    <section class="slide" data-title="导出">
+      <div class="grid">
+        <div class="panel pad">
+          <h2>导出对齐回答</h2>
+          <p class="lead">生成 Markdown 后保存到 alignment 目录。你说“对齐完毕”后，我会读取并更新正式文档。</p>
+          <div class="note">
+            建议路径：
+            <br><strong>docs/01-iterations/iteration-08-agent-v2-choice-based-requirement-convergence/alignment/iteration-08-alignment-02-response.md</strong>
+          </div>
+          <h3>总体补充</h3>
+          <textarea data-field="overall_notes" placeholder="任何未覆盖的要求、担心或额外决策。"></textarea>
+          <h3>Markdown 预览</h3>
+          <textarea id="exportPreview" class="export-box" readonly></textarea>
+        </div>
+        <aside class="side">
+          <div class="panel pad">
+            <h3>操作</h3>
+            <div class="actions">
+              <button type="button" onclick="renderExport()">生成 Markdown</button>
+              <button type="button" onclick="downloadMarkdown()">下载 Markdown</button>
+            </div>
+            <p class="small">下载后如浏览器放到 Downloads，请移动到建议路径。</p>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <div class="controls">
+    <div class="controls-inner">
+      <div class="small" id="slideTitle">范围总览</div>
+      <div class="actions">
+        <button type="button" class="secondary" id="prevBtn" onclick="prevSlide()">上一页</button>
+        <button type="button" id="nextBtn" onclick="nextSlide()">下一页</button>
+        <button type="button" class="ghost" onclick="renderExport()">刷新导出</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    let index = 0;
+    const fileName = 'iteration-08-alignment-02-response.md';
+
+    function setSlide(next) {
+      index = Math.max(0, Math.min(slides.length - 1, next));
+      slides.forEach((slide, i) => slide.classList.toggle('active', i === index));
+      document.getElementById('now').textContent = String(index + 1);
+      document.getElementById('total').textContent = String(slides.length);
+      document.getElementById('bar').style.width = `${((index + 1) / slides.length) * 100}%`;
+      document.getElementById('slideTitle').textContent = slides[index].dataset.title || '';
+      document.getElementById('prevBtn').disabled = index === 0;
+      document.getElementById('nextBtn').disabled = index === slides.length - 1;
+      if (index === slides.length - 1) renderExport();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    function nextSlide() { setSlide(index + 1); }
+    function prevSlide() { setSlide(index - 1); }
+    function radioValue(name) {
+      const item = document.querySelector(`input[name="${name}"]:checked`);
+      return item ? item.value : '';
+    }
+    function checkboxValues(name) {
+      return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(item => item.value);
+    }
+    function textValue(field) {
+      const item = document.querySelector(`[data-field="${field}"]`);
+      return item ? item.value.trim() : '';
+    }
+    function line(label, value) {
+      if (Array.isArray(value)) return `- ${label}: ${value.length ? value.join(', ') : '未选择'}`;
+      return `- ${label}: ${value || '未填写'}`;
+    }
+    function renderExport() {
+      const md = [
+        '# Iteration 08 Alignment 02 Response',
+        '',
+        `Generated at: ${new Date().toISOString()}`,
+        'Source HTML: `docs/01-iterations/iteration-08-agent-v2-choice-based-requirement-convergence/alignment/iteration-08-alignment-02.html`',
+        '',
+        '## 1. 总体策略',
+        line('overall_strategy', radioValue('overall_strategy')),
+        line('overall_strategy_notes', textValue('overall_strategy_notes')),
+        '',
+        '## 2. 场景化 sufficiency',
+        line('risk_trigger_scope', radioValue('risk_trigger_scope')),
+        line('risk_required_fields', radioValue('risk_required_fields')),
+        line('risk_skip_policy', radioValue('risk_skip_policy')),
+        line('sufficiency_detail_notes', textValue('sufficiency_detail_notes')),
+        '',
+        '## 3. 选择卡文案和选项',
+        line('default_options_policy', radioValue('default_options_policy')),
+        line('copy_tone', radioValue('copy_tone')),
+        line('choice_options_notes', textValue('choice_options_notes')),
+        '',
+        '## 4. 前端逐步交互',
+        line('presentation_mode', radioValue('presentation_mode')),
+        line('allow_previous_edit', radioValue('allow_previous_edit')),
+        line('summary_location', radioValue('summary_location')),
+        line('frontend_interaction_notes', textValue('frontend_interaction_notes')),
+        '',
+        '## 5. 错误与过期策略',
+        line('stale_definition', radioValue('stale_definition')),
+        line('partial_submit_policy', radioValue('partial_submit_policy')),
+        line('choice_expiry', radioValue('choice_expiry')),
+        line('error_policy_notes', textValue('error_policy_notes')),
+        '',
+        '## 6. 测试样例和实现边界',
+        line('test_cases', checkboxValues('test_cases')),
+        line('out_of_scope', checkboxValues('out_of_scope')),
+        line('implementation_order', radioValue('implementation_order')),
+        line('test_boundary_notes', textValue('test_boundary_notes')),
+        '',
+        '## 7. 总体补充',
+        textValue('overall_notes') || '无',
+        '',
+        '## Agent Processing Notes',
+        '- 用户说“对齐完毕”后，Agent 读取本文件。',
+        '- 本文件是反馈输入，不直接替代正式迭代文档。',
+        '- Agent 需要归纳、去重、检查冲突后，再更新正式 Markdown 文档。',
+        ''
+      ].join('\n');
+      document.getElementById('exportPreview').value = md;
+      return md;
+    }
+    function downloadMarkdown() {
+      const md = renderExport();
+      const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+    document.addEventListener('input', () => {
+      if (index === slides.length - 1) renderExport();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.target && ['TEXTAREA', 'INPUT'].includes(event.target.tagName)) return;
+      if (event.key === 'ArrowRight') nextSlide();
+      if (event.key === 'ArrowLeft') prevSlide();
+    });
+    setSlide(0);
+  </script>
+</body>
+</html>

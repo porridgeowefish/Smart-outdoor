@@ -41,6 +41,8 @@ class TripPlanMessage(Base):
     )
     role: Mapped[str] = mapped_column(String(32))
     content: Mapped[str] = mapped_column(Text)
+    content_type: Mapped[str] = mapped_column(String(32), default="text")
+    payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utc_now)
 
 

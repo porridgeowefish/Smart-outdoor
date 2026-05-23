@@ -2,7 +2,7 @@
 
 Status: active
 Owner: project maintainer
-Last reviewed: 2026-05-19
+Last reviewed: 2026-05-21
 Source of truth: documentation governance and Agent rule maintenance.
 
 ## 读取入口
@@ -22,6 +22,27 @@ docs/00-product-and-architecture/agent-rules/README.md
 禁止创建 _v1 / _v2 这类并行文档。
 不得把聊天记录当事实源。
 重大架构取舍新增 ADR。
+```
+
+## 对齐产物与事实源
+
+需求、架构、接口、数据库和验收口径仍以 Markdown 文档作为共识事实源。HTML 只作为对齐、可视化判断和反馈采集工具。
+
+```text
+Markdown：用于积累共识、形成迭代契约、承载最终事实。
+HTML：用于让人类翻页阅读、交互选择、做决策判断、导出回答。
+导出的回答 Markdown：用于承接人类反馈，不能自动等同于最终事实。
+正式迭代文档：必须由 Agent 在读取导出回答后，按规则整理、去重、检查冲突并写入。
+```
+
+当用户说“对齐完毕”时：
+
+```text
+1. 读取用户从 HTML 导出的回答 Markdown。
+2. 把回答与当前迭代文档、代码、Schema、测试和既有规则对照。
+3. 只把确认后的结论写入正式 Markdown 文档。
+4. 不把 HTML 页面本身当作事实源。
+5. 不把聊天记录当作事实源。
 ```
 
 ## 新规则/教训追加

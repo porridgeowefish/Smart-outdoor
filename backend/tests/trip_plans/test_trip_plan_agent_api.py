@@ -61,6 +61,11 @@ def test_send_first_message_creates_trip_plan_and_agent_run(
     assert body["agent_run_id"]
     assert body["run_status"] == "waiting_user"
     assert body["assistant_message"]["role"] == "assistant"
+    assert body["assistant_message"]["content_type"] == "choice_request"
+    assert body["choice_request"]["choice_request_id"]
+    assert len(body["choice_request"]["questions"]) <= 3
+    assert body["candidate_routes"] == []
+    assert "transport_hint" in body["missing_fields"]
     assert "交通方式" in body["assistant_message"]["content"]
 
 
@@ -77,7 +82,7 @@ def test_send_followup_message_appends_to_existing_trip_plan_and_returns_candida
     first_response = client.post(
         "/api/trip-plans/messages",
         headers=auth_headers,
-        json={"content": "周末想从成都出发看雪山"},
+        json={"content": "周末想从成都出发徒步"},
     )
     trip_plan_id = first_response.json()["trip_plan_id"]
 
@@ -99,6 +104,159 @@ def test_send_followup_message_appends_to_existing_trip_plan_and_returns_candida
     assert body["candidate_routes"][0]["route"]["route_id"]
     assert body["candidate_routes"][0]["route"]["track_preview"]["format"] == "geojson"
     assert body["candidate_routes"][0]["recommendation_reason"]
+
+
+def test_choice_results_update_context_and_continue_workflow(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    for name in ["Choice route 1", "Choice route 2", "Choice route 3"]:
+        _upload_public_route(client, auth_headers, name=name)
+
+    first_response = client.post(
+        "/api/trip-plans/messages",
+        headers=auth_headers,
+        json={"content": "周末从成都出发想徒步"},
+    )
+    body = first_response.json()
+    trip_plan_id = body["trip_plan_id"]
+    choice_request_id = body["choice_request"]["choice_request_id"]
+
+    choice_response = client.post(
+        f"/api/trip-plans/{trip_plan_id}/choice-results",
+        headers=auth_headers,
+        json={
+            "choice_request_id": choice_request_id,
+            "answers": [
+                {
+                    "field": "transport_hint",
+                    "value": "self_drive",
+                    "label": "自驾",
+                    "custom_text": None,
+                }
+            ],
+        },
+    )
+
+    assert choice_response.status_code == 200
+    choice_body = choice_response.json()
+    assert choice_body["run_status"] == "succeeded"
+    assert choice_body["choice_request"] is None
+    assert choice_body["confirmed_context"]["items"][-1] == {
+        "field": "transport_hint",
+        "label": "交通",
+        "value": "自驾",
+    }
+    assert len(choice_body["candidate_routes"]) == 3
+
+    detail_response = client.get(
+        f"/api/trip-plans/{trip_plan_id}/messages",
+        headers=auth_headers,
+    )
+    messages = detail_response.json()["messages"]
+    assert messages[1]["content_type"] == "choice_request"
+    assert messages[1]["payload"]["input"]["choice_request_id"] == choice_request_id
+    assert messages[2]["content_type"] == "choice_result"
+
+
+def test_choice_results_require_full_choice_request_answers(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    first_response = client.post(
+        "/api/trip-plans/messages",
+        headers=auth_headers,
+        json={"content": "周末想出去走走"},
+    )
+    body = first_response.json()
+    questions = body["choice_request"]["questions"]
+    assert len(questions) > 1
+
+    response = client.post(
+        f"/api/trip-plans/{body['trip_plan_id']}/choice-results",
+        headers=auth_headers,
+        json={
+            "choice_request_id": body["choice_request"]["choice_request_id"],
+            "answers": [
+                {
+                    "field": questions[0]["field"],
+                    "value": "成都",
+                    "label": "成都",
+                    "custom_text": "成都",
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "INVALID_CHOICE_RESULT"
+
+
+def test_answered_choice_request_cannot_be_submitted_again(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    for name in ["Active route 1", "Active route 2", "Active route 3"]:
+        _upload_public_route(client, auth_headers, name=name)
+    first_response = client.post(
+        "/api/trip-plans/messages",
+        headers=auth_headers,
+        json={"content": "周末从成都出发想徒步"},
+    )
+    body = first_response.json()
+    payload = {
+        "choice_request_id": body["choice_request"]["choice_request_id"],
+        "answers": [
+            {
+                "field": "transport_hint",
+                "value": "self_drive",
+                "label": "自驾",
+                "custom_text": None,
+            }
+        ],
+    }
+
+    first_submit = client.post(
+        f"/api/trip-plans/{body['trip_plan_id']}/choice-results",
+        headers=auth_headers,
+        json=payload,
+    )
+    second_submit = client.post(
+        f"/api/trip-plans/{body['trip_plan_id']}/choice-results",
+        headers=auth_headers,
+        json=payload,
+    )
+
+    assert first_submit.status_code == 200
+    assert second_submit.status_code == 409
+    assert second_submit.json()["code"] == "CHOICE_REQUEST_NOT_ACTIVE"
+
+
+def test_choice_results_reject_invalid_field(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    first_response = client.post(
+        "/api/trip-plans/messages",
+        headers=auth_headers,
+        json={"content": "周末想出去走走"},
+    )
+    body = first_response.json()
+
+    response = client.post(
+        f"/api/trip-plans/{body['trip_plan_id']}/choice-results",
+        headers=auth_headers,
+        json={
+            "choice_request_id": body["choice_request"]["choice_request_id"],
+            "answers": [
+                {
+                    "field": "made_up_field",
+                    "value": "whatever",
+                    "label": "whatever",
+                    "custom_text": None,
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "INVALID_CHOICE_RESULT"
 
 
 def test_agent_run_events_returns_sse_contract(
@@ -273,6 +431,49 @@ def test_closed_trip_plan_rejects_new_messages(
         "/api/trip-plans/messages",
         headers=auth_headers,
         json={"trip_plan_id": trip_plan_id, "content": "再推荐几条"},
+    )
+
+    assert closed_response.status_code == 400
+    assert closed_response.json()["code"] == "TRIP_PLAN_CLOSED"
+
+
+def test_closed_trip_plan_rejects_choice_results(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    response = client.post(
+        "/api/trip-plans/messages",
+        headers=auth_headers,
+        json={"content": "周末想出去走走"},
+    )
+    body = response.json()
+
+    from app.db.session import SessionLocal
+    from app.features.trip_plans.model import TripPlan
+
+    db = SessionLocal()
+    try:
+        trip_plan = db.get(TripPlan, body["trip_plan_id"])
+        assert trip_plan is not None
+        trip_plan.status = "closed"
+        db.add(trip_plan)
+        db.commit()
+    finally:
+        db.close()
+
+    closed_response = client.post(
+        f"/api/trip-plans/{body['trip_plan_id']}/choice-results",
+        headers=auth_headers,
+        json={
+            "choice_request_id": body["choice_request"]["choice_request_id"],
+            "answers": [
+                {
+                    "field": "transport_hint",
+                    "value": "self_drive",
+                    "label": "自驾",
+                    "custom_text": None,
+                }
+            ],
+        },
     )
 
     assert closed_response.status_code == 400

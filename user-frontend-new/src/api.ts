@@ -32,6 +32,12 @@ export type RoutePlanSnapshotDetailResponse = components['schemas']['RoutePlanSn
 export type ImageAssetMetadata = components['schemas']['ImageAssetMetadata']
 export type StorageObjectMetadata = components['schemas']['StorageObjectMetadata']
 export type UploadCredentialResponse = components['schemas']['UploadCredentialResponse']
+export type ChoiceOption = components['schemas']['ChoiceOption']
+export type ChoiceQuestion = components['schemas']['ChoiceQuestion']
+export type ChoiceRequest = components['schemas']['ChoiceRequest']
+export type ChoiceAnswer = components['schemas']['ChoiceAnswer']
+export type ChoiceResultRequest = components['schemas']['ChoiceResultRequest']
+export type ConfirmedContext = components['schemas']['ConfirmedContext']
 
 type UploadAssetType = 'avatar' | 'route_cover' | 'route_track_raw'
 type UploadedObject = StorageObjectMetadata & {
@@ -287,6 +293,20 @@ export async function getTripPlanConversation(
     },
   })
   if (error || !data) throw buildApiError(response.status, error, 'Failed to load conversation')
+  return data
+}
+
+export async function submitTripPlanChoiceResults(
+  tripPlanId: string,
+  payload: ChoiceResultRequest,
+): Promise<TripPlanMessagePostResponse> {
+  const { data, error, response } = await apiClient.POST('/api/trip-plans/{trip_plan_id}/choice-results', {
+    params: {
+      path: { trip_plan_id: tripPlanId },
+    },
+    body: payload,
+  })
+  if (error || !data) throw buildApiError(response.status, error, 'Failed to submit choice result')
   return data
 }
 

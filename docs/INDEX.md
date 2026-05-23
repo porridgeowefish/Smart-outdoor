@@ -2,7 +2,7 @@
 
 Status: active
 Owner: project maintainer
-Last reviewed: 2026-05-08
+Last reviewed: 2026-05-20
 Source of truth: this file is the entry point; linked documents own their domain details.
 
 本文件是人和 AI coding agent 的统一文档入口。开始开发前先读这里，再按任务进入对应模块。
@@ -60,6 +60,7 @@ Iteration 04 TripPlan + Agent Workflow
 Iteration 05 Snapshot / 我的规划
 Iteration 06 Ability Profile
 Iteration 07 Object Storage + Image Assets
+Iteration 08 Agent V2 Choice-based Requirement Convergence
 ```
 
 ## 历史文档归档映射
