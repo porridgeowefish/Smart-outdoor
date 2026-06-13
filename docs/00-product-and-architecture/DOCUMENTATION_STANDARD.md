@@ -74,19 +74,7 @@ ADR
 docs/01-iterations/iteration-XX-name/
 ```
 
-每一轮迭代必须包含：
-
-```text
-README.md
-USER_STORIES.md
-API_CONTRACT.md
-DATABASE_DESIGN.md
-TEST_PLAN.md
-ACCEPTANCE_CRITERIA.md
-DELIVERY_NOTES.md
-```
-
-迭代文档只描述本轮交付，不重复长期架构全文。
+每一轮迭代必须包含[每轮必备文档清单](./agent-rules/20-iteration-delivery.md)。迭代文档只描述本轮交付，不重复长期架构全文。
 
 ## 4. API 契约规则
 
@@ -152,6 +140,8 @@ Date: YYYY-MM-DD
 ```
 
 已接受 ADR 不回改历史结论；新决策新增 ADR 并标记 supersedes。
+
+ADR 触发场景对应的长期文档同步落点见 [agent-rules/10-documentation-governance.md](./agent-rules/10-documentation-governance.md) 的架构变更落点表。
 
 ## 7. AI Agent 协作规则
 

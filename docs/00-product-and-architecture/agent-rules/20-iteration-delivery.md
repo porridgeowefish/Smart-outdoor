@@ -15,16 +15,7 @@ docs/00-product-and-architecture/MVP_ROADMAP.md
 
 ## MVP 顺序
 
-```text
-Iteration 01 Auth + User
-Iteration 02 Route Upload + Parser
-Iteration 03 Route List + Detail
-Iteration 04 TripPlan + Agent Mock
-Iteration 05 Snapshot / 我的规划
-Iteration 06 Ability Profile
-Iteration 07 Object Storage + Image Assets
-Iteration 08 Agent V2 Choice-based Requirement Convergence
-```
+迭代顺序与各轮目录见 [01-iterations/README.md](../../01-iterations/README.md)。
 
 ## 每轮必备文档
 

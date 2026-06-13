@@ -63,17 +63,7 @@ PRD 表达产品愿景；MVP 迭代文档表达当前实现边界。不得仅凭
 
 ## 当前迭代顺序
 
-```text
-Iteration 01 Auth + User
-Iteration 02 Route Upload + Parser
-Iteration 03 Route List + Detail
-Iteration 04 TripPlan + Agent Workflow
-Iteration 05 Snapshot / 我的规划
-Iteration 06 Ability Profile
-Iteration 07 Object Storage + Image Assets
-Iteration 08 Agent V2 Choice-based Requirement Convergence
-Iteration 09 Tag Knowledge Base + RAG-assisted Choice Cards
-```
+MVP 迭代顺序与各轮目录入口见 [敏捷迭代 README](./01-iterations/README.md)。
 
 ## 历史文档归档映射
 
@@ -97,6 +87,6 @@ Iteration 09 Tag Knowledge Base + RAG-assisted Choice Cards
 开工前：补齐本迭代 USER_STORIES / API_CONTRACT / TEST_PLAN。
 改接口：同步 Pydantic Schema、OpenAPI、迭代 API 文档。
 改表结构：同步 ORM model、数据库设计、测试。
-做架构取舍：新增 ADR，不把决策藏在聊天记录里。
+做架构取舍：新增 ADR，并按[架构变更落点表](./00-product-and-architecture/agent-rules/10-documentation-governance.md)同步更新受影响的 00 长期文档（SYSTEM / AGENT / DATA_MODEL 等）。
 交付后：更新 DELIVERY_NOTES 和验收状态。
 ```

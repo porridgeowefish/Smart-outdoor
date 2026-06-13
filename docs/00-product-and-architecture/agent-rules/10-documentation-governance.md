@@ -47,22 +47,20 @@ HTML：用于让人类翻页阅读、交互选择、做决策判断、导出回�
 
 ## 新规则/教训追加
 
-当用户新增规则、教训、约束或设计原则时：
-
-```text
-1. 用 rg 搜关键词，检查是否已有同类规则或事实。
-2. Agent 行为规则写入 agent-rules/ 对应原子文件。
-3. 产品、架构、API、数据库、验收事实写入 docs 对应事实源。
-4. 如果新增规则文件或触发条件，更新 agent-rules/README.md。
-5. 最终回复说明规则落在哪、检查了哪些冲突。
-```
+当用户新增规则、教训、约束或设计原则时，流程见 [agent-rules/README.md 第 4 节](./README.md)。要点：先归类、再搜索判冲突、落位到原子文件或事实源、保留单一事实源、更新本目录 README、重大架构取舍留 ADR。
 
 ## 文档更新时机
 
-```text
-开工前：补齐本迭代 USER_STORIES / API_CONTRACT / TEST_PLAN。
-改接口：同步 Pydantic Schema、OpenAPI、迭代 API 文档。
-改表结构：同步 ORM model、数据库设计、测试。
-做架构取舍：新增 ADR，不把决策藏在聊天记录里。
-交付后：更新 DELIVERY_NOTES 和验收状态。
-```
+开工 / 接口 / 表结构 / 交付的总表见 [docs/INDEX.md](../../INDEX.md)。架构变更需额外同步长期架构文档：
+
+### 架构变更落点表
+
+| 变更类型 | 新增 ADR | 同步更新 |
+|---|---|---|
+| 技术栈 / 基础设施取舍 | ✓ | SYSTEM_ARCHITECTURE.md（技术栈、组件边界、协作链路）|
+| 数据模型边界取舍 | ✓ | DATA_MODEL.md（表分组、字段、对象存储字段）|
+| Agent workflow 关键策略 | ✓ | AGENT_ARCHITECTURE.md（节点职责、状态机）|
+| Mock / Real 切换策略 | ✓ | SYSTEM_ARCHITECTURE.md（设计原则：mock 切换）|
+| 安全 / 隐私 / 证据约束 | ✓ | 相关 00 文档 + agent-rules 原子文件（60 / 70 / 80）|
+
+规则：更新文档内容时同步更新该文档的 Last reviewed 日期。
