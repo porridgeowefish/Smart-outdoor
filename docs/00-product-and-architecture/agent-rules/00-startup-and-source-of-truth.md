@@ -20,17 +20,7 @@ Source of truth: startup order, fact-source priority, and conflict checks.
 
 ## 事实源优先级
 
-冲突时按此顺序：
-
-```text
-1. 已实现代码、测试、Pydantic Schema、FastAPI OpenAPI 输出
-2. docs/01-iterations 中当前迭代文档
-3. docs/00-product-and-architecture 中长期架构和 ADR
-4. docs/99-archive/backend-docs-legacy 中历史设计文档
-5. design_doc 中 PRD、图和演示材料
-```
-
-PRD 表达产品愿景；MVP 迭代文档表达当前实现边界。不得仅凭 PRD 扩展 MVP 范围。
+唯一定义见 [docs/INDEX.md「当前事实源优先级」](../../INDEX.md)。冲突时按该顺序：实现/测试 > 当前迭代 > 长期架构/ADR > 历史归档 > PRD。PRD 表达产品愿景，不得仅凭 PRD 扩展 MVP 范围。
 
 ## 新旧文档冲突检查
 

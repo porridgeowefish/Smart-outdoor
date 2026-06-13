@@ -38,17 +38,28 @@ PRD 表达产品愿景；MVP 迭代文档表达当前实现边界。不得仅凭
 
 ## 必读入口
 
-- 文档治理规范：[DOCUMENTATION_STANDARD.md](./00-product-and-architecture/DOCUMENTATION_STANDARD.md)
+入口分三层：顶层入口负责路由；各领域入口是进入某个职能区域时先读的 README；专题文档按需查阅。
+
+### 顶层入口（项目级）
+
 - AI Agent 规则索引：[AGENTS.md](../AGENTS.md)
+- 文档总入口：[INDEX.md](./INDEX.md)（本文件）
+
+### 各领域入口（进每个领域先读的 README）
+
+- 产品与架构：[00-product-and-architecture/README.md](./00-product-and-architecture/README.md)
+- 敏捷迭代：[01-iterations/README.md](./01-iterations/README.md)
 - AI Agent 原子规则：[agent-rules/README.md](./00-product-and-architecture/agent-rules/README.md)
-- 产品与架构入口：[00-product-and-architecture/README.md](./00-product-and-architecture/README.md)
+
+### 领域内专题文档（按需查阅）
+
+- 文档治理规范：[DOCUMENTATION_STANDARD.md](./00-product-and-architecture/DOCUMENTATION_STANDARD.md)
 - 核心资产索引：[ASSET_INDEX.md](./00-product-and-architecture/ASSET_INDEX.md)
 - PRD 摘要：[PRD.md](./00-product-and-architecture/PRD.md)
 - 领域模型：[DOMAIN_MODEL.md](./00-product-and-architecture/DOMAIN_MODEL.md)
 - Agent 架构：[AGENT_ARCHITECTURE.md](./00-product-and-architecture/AGENT_ARCHITECTURE.md)
 - MVP 路线图：[MVP_ROADMAP.md](./00-product-and-architecture/MVP_ROADMAP.md)
 - 未来规划草案：[FUTURE_PLANNING.md](./00-product-and-architecture/FUTURE_PLANNING.md)
-- 敏捷迭代入口：[01-iterations/README.md](./01-iterations/README.md)
 
 ## 当前迭代顺序
 
@@ -61,6 +72,7 @@ Iteration 05 Snapshot / 我的规划
 Iteration 06 Ability Profile
 Iteration 07 Object Storage + Image Assets
 Iteration 08 Agent V2 Choice-based Requirement Convergence
+Iteration 09 Tag Knowledge Base + RAG-assisted Choice Cards
 ```
 
 ## 历史文档归档映射

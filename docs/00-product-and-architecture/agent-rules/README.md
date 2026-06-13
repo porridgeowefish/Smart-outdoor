@@ -7,6 +7,8 @@ Source of truth: this directory owns detailed, atomic AI Agent rules referenced 
 
 ## 1. 设计目标
 
+本文件是 `docs/INDEX.md` 下属的 AI Agent 规则子域入口，承接 `AGENTS.md → docs/INDEX.md → 本 README` 的披露链。
+
 本目录用于管理 `AGENTS.md` 的各项规范，避免把所有规则一次性写进 `AGENTS.md` 导致上下文过载或长任务遗忘。
 
 规则管理原则：
@@ -35,7 +37,7 @@ docs 其它文件：承载产品、架构、接口、数据库、迭代事实源
 
 ## 3. 按任务触发读取
 
-每次任务先读 `AGENTS.md` 和本 README，再按触发条件读取对应规则文件。
+每次任务先读 `AGENTS.md` → `docs/INDEX.md` → 本 README，再按触发条件读取对应规则文件。
 
 ```text
 文档治理 / 新增规则 / 事故教训：

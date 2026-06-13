@@ -13,6 +13,7 @@ Source of truth: lightweight entry point for all AI coding agents.
 
 ```text
 先读本文件。
+再读 docs/INDEX.md。
 再读 docs/00-product-and-architecture/agent-rules/README.md。
 然后按任务触发读取对应原子规则文件。
 不要一次性把所有规则塞进上下文。
@@ -46,7 +47,7 @@ Source of truth: lightweight entry point for all AI coding agents.
 
 ## 2. 渐进式披露入口
 
-按任务读取规则：
+承接第 0 节链路，Agent 规则子域入口（经 docs/INDEX.md 进入）：
 
 ```text
 docs/00-product-and-architecture/agent-rules/README.md
