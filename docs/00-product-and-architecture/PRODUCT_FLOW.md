@@ -2,7 +2,7 @@
 
 Status: active
 Owner: project maintainer
-Last reviewed: 2026-05-08
+Last reviewed: 2026-06-14
 Source of truth: migrated from PRD UI flow and `design_doc` diagrams.
 
 ## MVP 主入口
@@ -38,7 +38,7 @@ Agent 抽取上下文
 
 来源图：
 
-![线路展示流程图](../../../design_doc/线路展示流程图.png)
+![线路展示流程图](../../design_doc/线路展示流程图.png)
 
 用户路径：
 
@@ -58,7 +58,7 @@ Agent 抽取上下文
 
 来源图：
 
-![轨迹资产相关流程图](../../../design_doc/轨迹资产相关流程图.png)
+![轨迹资产相关流程图](../../design_doc/轨迹资产相关流程图.png)
 
 数据流：
 
@@ -80,7 +80,7 @@ Agent 抽取上下文
 
 来源图：
 
-![个人信息流程图](../../../design_doc/个人信息流程图.png)
+![个人信息流程图](../../design_doc/个人信息流程图.png)
 
 用户路径：
 
@@ -104,7 +104,7 @@ Agent 推荐时读取能力画像
 
 来源图：
 
-![一个规划的状态图](../../../design_doc/一个规划的状态图.png)
+![一个规划的状态图](../../design_doc/一个规划的状态图.png)
 
 核心原则：
 
