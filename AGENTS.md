@@ -19,7 +19,7 @@ Source of truth: lightweight entry point for all AI coding agents.
 不要一次性把所有规则塞进上下文。
 ```
 
-新增规则、事故教训、流程约束时，不直接堆进本文件；必须追加到 `docs/00-product-and-architecture/agent-rules/` 下对应原子文件，并同步更新该目录的 `README.md`。
+新增规则、事故教训、流程约束时不堆进本文件，按落点分流：跨迭代通用规则和提炼后的事故教训追加到 `docs/00-product-and-architecture/agent-rules/` 对应原子文件并更新其 `README.md`；迭代内具体事故的原始记录（如 INCIDENT_REPORT）随迭代放 `docs/01-iterations/<迭代>/`，重大教训提炼后回填 agent-rules。
 
 ## 1. 八耻八荣
 
