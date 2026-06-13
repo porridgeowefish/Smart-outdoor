@@ -68,6 +68,19 @@ trip_plan_candidate_routes
 route_plan_snapshots
 ```
 
+## 对象存储字段（iteration-07 起）
+
+图片资产与大型轨迹产物存对象存储，DB 只存 provider + key + variants 元数据：
+
+```text
+users: avatar_storage_provider / avatar_storage_key / avatar_variants
+route_assets: cover_storage_provider / cover_storage_key / cover_image_variants
+route_files: storage_provider / storage_key（原始轨迹文件）
+route_analysis_snapshots: track_geojson_storage_provider / track_geojson_storage_key（完整派生轨迹）
+```
+
+另有 `*_url` 字段（avatar_url / cover_image_url / track_geojson_url）保存可访问 URL。详细决策见 [ADR-0002](./ADR/0002-object-storage.md)。
+
 ## MVP 存储取舍
 
 MVP 使用简单鲁棒设计：

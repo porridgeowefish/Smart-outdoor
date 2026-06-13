@@ -82,7 +82,7 @@ trip_plans.context_state
 
 ### sufficiency_check
 
-判断是否达到推荐条件。信息不足时进入自然追问，信息充分时进入线路召回。
+判断是否达到推荐条件。信息不足时生成结构化选择卡（`ask_user_choice`）让用户逐步确认偏好，风险上下文（路况 / 安全）强制额外确认；信息充分时进入线路召回。（iteration-08 起 V2 choice-based 收敛，详见 [ADR-0003](./ADR/0003-choice-based-agent.md)。）
 
 ### route_retrieval
 

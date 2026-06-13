@@ -16,6 +16,7 @@ Frontend: React 18 + TypeScript + Vite + Tailwind CSS
 Backend: FastAPI + Python 3.10+
 Database: MVP SQLite/PostgreSQL, future PostgreSQL
 Deploy: Docker + Docker Compose
+Storage: 对象存储（COS/S3-compatible），前端直传 + 后端签名
 ```
 
 ## 组件边界
@@ -50,6 +51,9 @@ Agent Orchestration
 
 Evidence Tools
 天气、交通、Web 搜索、LLM provider。
+
+Object Storage / 对象存储
+图片资产与大型轨迹产物，前端直传，DB 只存 provider+key。
 ```
 
 ## 协作链路
@@ -77,6 +81,18 @@ Agent 更新上下文、召回路线、验证证据、生成回复
 ↓
 SSE 推送文本、阶段、候选卡片和完成事件
 ```
+
+## 资产存储
+
+iteration-07 起引入对象存储承载图片资产（线路封面、用户头像）和大型轨迹产物：
+
+```text
+- 前端直传：前端先向后端请求临时上传凭据，再用 signed PUT URL 直传，后端不经手文件本体。
+- 访问控制：public-read bucket + Referer 白名单防盗链；CORS 支持浏览器预检。
+- 持久化：DB 只存 provider + key + variants 元数据，文件本体在对象存储。
+```
+
+详细决策与替代方案见 [ADR-0002](./ADR/0002-object-storage.md)。
 
 ## 设计原则
 
