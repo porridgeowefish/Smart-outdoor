@@ -2,7 +2,7 @@
 
 Status: active
 Owner: project maintainer
-Last reviewed: 2026-05-08
+Last reviewed: 2026-06-14
 Source of truth: migrated from PRD AI architecture and `docs/99-archive/backend-docs-legacy/US-01_AGENT_WORKFLOW.md`.
 
 ## 定位
@@ -26,9 +26,9 @@ Agent 负责把用户自然语言、规划上下文、线路资产库、能力�
 
 ![Agent 顺序流程图](../../design_doc/Agent顺序流程图.png)
 
-![Agent 状态机图](../../../design_doc/Agent状态机图.png)
+![Agent 状态机图](../../design_doc/Agent状态机图.png)
 
-![Agent 架构图](../../../design_doc/Agent.png)
+![Agent 架构图](../../design_doc/Agent.png)
 
 ## AgentRun 输入
 

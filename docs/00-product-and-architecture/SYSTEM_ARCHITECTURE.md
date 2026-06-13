@@ -2,7 +2,7 @@
 
 Status: active
 Owner: project maintainer
-Last reviewed: 2026-05-08
+Last reviewed: 2026-06-14
 Source of truth: migrated from PRD architecture section and component/sequence diagrams.
 
 ## 架构定位
@@ -23,7 +23,7 @@ Storage: 对象存储（COS/S3-compatible），前端直传 + 后端签名
 
 来源图：
 
-![组件图](../../../design_doc/组件图.png)
+![组件图](../../design_doc/组件图.png)
 
 核心组件：
 
@@ -60,7 +60,7 @@ Object Storage / 对象存储
 
 来源图：
 
-![时序图](../../../design_doc/时序图.png)
+![时序图](../../design_doc/时序图.png)
 
 核心链路：
 

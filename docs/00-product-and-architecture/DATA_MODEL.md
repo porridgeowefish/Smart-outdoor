@@ -2,7 +2,7 @@
 
 Status: active
 Owner: project maintainer
-Last reviewed: 2026-05-08
+Last reviewed: 2026-06-14
 Source of truth: migrated from `docs/99-archive/backend-docs-legacy/US-01_DATABASE_DESIGN.md` and ER diagrams; ORM models are final implementation source.
 
 ## ER 图
