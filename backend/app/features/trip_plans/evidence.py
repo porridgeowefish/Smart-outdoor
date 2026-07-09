@@ -47,12 +47,13 @@ def search_for_route(
     if location and location != "unknown":
         query_parts.append(location)
     query_parts.append(activity_goal if isinstance(activity_goal, str) else "徒步")
-    query_parts.extend(["近期", "路况"])
+    query_parts.extend(["攻略", "路况", "安全"])
     return search_evidence_json(
         SearchRequest(
             query=" ".join(query_parts),
             route_name=route.name,
             max_results=5,
+            include_answer=False,
         )
     )
 
