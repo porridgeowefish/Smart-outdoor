@@ -24,7 +24,12 @@ class ContextExtractionResult(BaseModel):
 class ResponseGenerationInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    kind: Literal["waiting_user", "recommendation", "candidate_detail_card"]
+    kind: Literal[
+        "waiting_user",
+        "recommendation",
+        "candidate_detail_card",
+        "web_evidence_summary",
+    ]
     context_state: dict = Field(default_factory=dict)
     candidate_count: int = Field(default=0, ge=0)
     candidate_routes: list[dict] = Field(default_factory=list)

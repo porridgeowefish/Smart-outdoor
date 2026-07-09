@@ -1,24 +1,33 @@
 # API Contract
 
-Status: draft
+Status: active
 Owner: project maintainer
-Last reviewed: 2026-05-08
+Last reviewed: 2026-06-14
 Source of truth: Pydantic V2 schemas and `/openapi.json`.
+
+## 端点
+
+| 方法 | 路径 | 本轮变化 |
+|---|---|---|
+| POST | `/api/me/activity-tracks/upload` | 新增 |
+| GET | `/api/me/activity-tracks` | 新增 |
+| GET | `/api/me/ability-profile` | 新增 |
+
+三个端点均要求登录（401 UNAUTHORIZED 未登录访问）。
 
 ## POST /api/me/activity-tracks/upload
 
-用途：上传用户已完成活动轨迹，保存为 `activity_track`，并重新计算当前用户能力画像。
+用途：上传用户已完成活动轨迹，保存为完成活动记录，并重新计算当前用户能力画像。
 
-Request:
+Request（multipart/form-data）：
 
-```text
-multipart/form-data
-file: required, GPX / KML / GeoJSON
-activity_date: optional, YYYY-MM-DD
-source_type: optional, default manual_upload
-```
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| file | binary | 是 | GPX / KML / GeoJSON 轨迹文件 |
+| activity_date | str (YYYY-MM-DD) | 否 | 活动日期，缺省时从轨迹时间或当天推导 |
+| source_type | str | 否 | 来源类型，默认 `manual_upload` |
 
-Response:
+Response：
 
 ```json
 {
@@ -72,35 +81,11 @@ Response:
 }
 ```
 
-错误：
-
-```json
-{
-  "code": "UNSUPPORTED_FILE_TYPE",
-  "message": "Only GPX, KML, and GeoJSON activity tracks are supported"
-}
-```
-
-```json
-{
-  "code": "TRACK_PARSE_FAILED",
-  "message": "Activity track could not be parsed"
-}
-```
-
-实现说明：
-
-```text
-上传成功固定返回 parse_status=parsed。
-解析失败不会保存 activity_track，也不会生成 failed 状态记录；当前实现直接返回 400 TRACK_PARSE_FAILED。
-activity_track 是用户已完成活动，不会创建 route_asset，也不会进入线路库。
-```
-
 ## GET /api/me/activity-tracks
 
 用途：获取当前用户已上传的完成活动轨迹列表，用于个人中心活动记录展示。
 
-Response:
+Response：
 
 ```json
 {
@@ -125,21 +110,11 @@ Response:
 }
 ```
 
-实现说明：
-
-```text
-列表按 activity_date desc、created_at desc 排序。
-month 当前返回 activity_date.month 的字符串，例如 "5"。
-location 来自 analysis_json.location.display_name；没有反查结果时返回 "待识别"。
-type 当前固定为 "hike"。
-pace_or_speed 根据 moving_time_seconds 和 distance_km 计算；缺少时间或距离无效时返回 "--"。
-```
-
 ## GET /api/me/ability-profile
 
 用途：获取当前用户能力画像。
 
-Response:
+Response：
 
 ```json
 {
@@ -165,18 +140,16 @@ Response:
 }
 ```
 
-错误：
+## 错误码
 
-```json
-{
-  "code": "ABILITY_PROFILE_NOT_FOUND",
-  "message": "Ability profile not found"
-}
-```
+| HTTP | code | 触发 |
+|---|---|---|
+| 401 | UNAUTHORIZED | 未登录或登录已失效（三个端点通用）。 |
+| 400 | UNSUPPORTED_FILE_TYPE | upload 收到非 GPX / KML / GeoJSON 文件类型。 |
+| 400 | TRACK_PARSE_FAILED | upload 轨迹无法解析。 |
+| 404 | ABILITY_PROFILE_NOT_FOUND | 当前用户尚无能力画像（未上传成功任何完成轨迹）。 |
 
-实现说明：
+## 历史来源
 
-```text
-当前实现不会在 0 条活动时返回 unknown profile。
-如果用户尚未上传成功过 activity_track，GET /api/me/ability-profile 返回 404 ABILITY_PROFILE_NOT_FOUND。
-```
+- DATABASE_DESIGN.md（`activity_tracks` / `user_ability_profiles` 表与 JSON 子键）
+- DELIVERY_NOTES.md（解析失败不落 failed 记录、`parse_status` 固定为 parsed 等实现说明）

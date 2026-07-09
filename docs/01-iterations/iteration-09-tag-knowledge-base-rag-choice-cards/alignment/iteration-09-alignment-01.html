@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Iteration 09 对齐 01 - 标签知识库与 RAG 辅助选择卡</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1f2937;
+      --muted: #667085;
+      --line: #d8dee8;
+      --panel: #ffffff;
+      --band: #f5f7fb;
+      --accent: #0f766e;
+      --accent-weak: #d9f3ef;
+      --warn: #a15c07;
+      --danger: #b42318;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--band);
+    }
+    header {
+      padding: 28px min(6vw, 72px) 18px;
+      background: #ffffff;
+      border-bottom: 1px solid var(--line);
+    }
+    h1 { margin: 0 0 8px; font-size: 28px; line-height: 1.2; }
+    h2 { margin: 0 0 14px; font-size: 22px; }
+    h3 { margin: 18px 0 8px; font-size: 16px; }
+    p { line-height: 1.7; }
+    .subtitle { margin: 0; color: var(--muted); }
+    .layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 24px;
+      padding: 24px min(6vw, 72px) 40px;
+    }
+    nav {
+      position: sticky;
+      top: 16px;
+      align-self: start;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    nav button, .pager button, .export button {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin: 4px 0;
+      text-align: left;
+      cursor: pointer;
+    }
+    nav button.active {
+      border-color: var(--accent);
+      background: var(--accent-weak);
+      color: #064e46;
+      font-weight: 700;
+    }
+    main {
+      min-width: 0;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 24px;
+    }
+    section { display: none; }
+    section.active { display: block; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .box {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fff;
+    }
+    .box strong { display: block; margin-bottom: 6px; }
+    .muted { color: var(--muted); }
+    .diagram {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      margin: 18px 0;
+    }
+    .node {
+      min-height: 74px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fbfcfe;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .node b { display: block; margin-bottom: 4px; color: #0f766e; }
+    .question {
+      border-top: 1px solid var(--line);
+      padding-top: 18px;
+      margin-top: 18px;
+    }
+    label.option {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      margin: 8px 0;
+      cursor: pointer;
+      background: #fff;
+    }
+    label.option span { display: block; color: var(--muted); font-size: 13px; margin-top: 3px; }
+    textarea, input[type="text"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px;
+      font: inherit;
+      min-height: 42px;
+    }
+    textarea { min-height: 90px; resize: vertical; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 9px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #f2f5f9; }
+    .pager {
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+      margin-top: 22px;
+    }
+    .pager button, .export button {
+      width: auto;
+      min-width: 110px;
+      text-align: center;
+    }
+    .primary {
+      background: var(--accent) !important;
+      color: #fff !important;
+      border-color: var(--accent) !important;
+    }
+    .export {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      margin-top: 16px;
+      background: #fbfcfe;
+    }
+    code { background: #eef2f7; padding: 2px 5px; border-radius: 4px; }
+    pre { white-space: pre-wrap; background: #111827; color: #f9fafb; padding: 12px; border-radius: 8px; overflow: auto; }
+    @media (max-width: 860px) {
+      .layout { grid-template-columns: 1fr; padding: 16px; }
+      nav { position: static; }
+      .grid, .diagram { grid-template-columns: 1fr; }
+      main { padding: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Iteration 09 对齐 01</h1>
+    <p class="subtitle">标签知识库与 RAG 辅助选择卡。覆盖范围：业务闭环、RAG 边界、知识库形态、接口/数据选择、测试验收。建议导出到 <code>docs/01-iterations/iteration-09-tag-knowledge-base-rag-choice-cards/alignment/iteration-09-alignment-01-answers.md</code>。</p>
+  </header>
+  <div class="layout">
+    <nav id="nav"></nav>
+    <main>
+      <section class="active" data-title="范围">
+        <h2>1. 本次要判断什么</h2>
+        <p>Iteration 09 接在 Iteration 08 的选择式需求收敛之后。它不替代选择卡，而是让选择卡的选项来源更聪明、更可解释。</p>
+        <div class="diagram">
+          <div class="node"><b>用户原话</b>想玩雪，但不要太危险</div>
+          <div class="node"><b>粗抽取</b>目标、时间、出发地等基础字段</div>
+          <div class="node"><b>标签召回</b>雪景、安全、成熟路线、冰雪路</div>
+          <div class="node"><b>选择卡</b>让用户确认偏好和避开项</div>
+          <div class="node"><b>上下文</b>preference_tags / avoid_tags</div>
+          <div class="node"><b>后续</b>进入线路召回与推荐</div>
+        </div>
+        <div class="question">
+          <h3>Q1：本轮核心目标是否准确？</h3>
+          <label class="option"><input type="radio" name="goal_fit" value="yes" checked><div><strong>准确</strong><span>RAG 只辅助选择卡生成，不直接推荐。</span></div></label>
+          <label class="option"><input type="radio" name="goal_fit" value="mostly"><div><strong>大体准确，但要调整</strong><span>保留方向，但需要改范围或术语。</span></div></label>
+          <label class="option"><input type="radio" name="goal_fit" value="no"><div><strong>不准确</strong><span>Iteration 09 应该转向别的闭环。</span></div></label>
+          <textarea name="goal_notes" placeholder="补充你的判断，例如本轮最应该解决的问题。"></textarea>
+        </div>
+      </section>
+
+      <section data-title="边界">
+        <h2>2. RAG 的角色边界</h2>
+        <table>
+          <thead><tr><th>允许</th><th>不允许</th></tr></thead>
+          <tbody>
+            <tr><td>召回可能相关的标签、风险维度和选项方向。</td><td>绕过用户确认，直接写入高可信 user_choice 字段。</td></tr>
+            <tr><td>为选择卡提供可解释 option。</td><td>生成近期路况、天气、安全状态等事实断言。</td></tr>
+            <tr><td>召回不足时降级到基础选择卡。</td><td>因为向量相似就扩大推荐范围或做最终推荐。</td></tr>
+          </tbody>
+        </table>
+        <div class="question">
+          <h3>Q2：哪些内容必须排除在 Iteration 09 外？</h3>
+          <label class="option"><input type="checkbox" name="out_of_scope" value="pgvector" checked><div><strong>pgvector / 大规模向量库</strong><span>MVP 先不引入重基础设施。</span></div></label>
+          <label class="option"><input type="checkbox" name="out_of_scope" value="rerank" checked><div><strong>线路重排升级</strong><span>留给 Iteration 10。</span></div></label>
+          <label class="option"><input type="checkbox" name="out_of_scope" value="langgraph" checked><div><strong>LangGraph 两阶段工作流</strong><span>留给 Iteration 11。</span></div></label>
+          <label class="option"><input type="checkbox" name="out_of_scope" value="external_facts" checked><div><strong>近期路况/天气事实断言</strong><span>标签知识库不是外部事实证据。</span></div></label>
+          <textarea name="boundary_notes" placeholder="还有哪些必须排除或必须纳入？"></textarea>
+        </div>
+      </section>
+
+      <section data-title="知识库">
+        <h2>3. 标签知识库形态</h2>
+        <p>候选字段：<code>tag</code>、<code>category</code>、<code>description</code>、<code>positive_phrases</code>、<code>negative_phrases</code>。</p>
+        <div class="grid">
+          <div class="box"><strong>内存常量</strong><span class="muted">最快、最容易测试，不需要迁移；更新需要发版。</span></div>
+          <div class="box"><strong>本地 JSON/YAML</strong><span class="muted">仍然简单，便于维护和审阅；需要加载和校验。</span></div>
+          <div class="box"><strong>数据库表</strong><span class="muted">便于后台维护；会增加迁移和管理边界。</span></div>
+          <div class="box"><strong>混合方案</strong><span class="muted">内置基础标签，未来再叠加运营配置。</span></div>
+        </div>
+        <div class="question">
+          <h3>Q3：本轮知识库优先采用哪种形态？</h3>
+          <label class="option"><input type="radio" name="knowledge_store" value="local_file" checked><div><strong>本地 JSON/YAML</strong><span>比内存常量更像知识资产，又不引入数据库迁移。</span></div></label>
+          <label class="option"><input type="radio" name="knowledge_store" value="in_memory"><div><strong>代码内存常量</strong><span>最快打通测试切片。</span></div></label>
+          <label class="option"><input type="radio" name="knowledge_store" value="database"><div><strong>数据库表</strong><span>如果本轮就要支持维护后台。</span></div></label>
+          <label class="option"><input type="radio" name="knowledge_store" value="hybrid"><div><strong>混合方案</strong><span>内置基础标签，后续可扩展数据库。</span></div></label>
+          <textarea name="knowledge_notes" placeholder="补充首批标签分类、维护方式或命名偏好。"></textarea>
+        </div>
+      </section>
+
+      <section data-title="召回">
+        <h2>4. 召回实现策略</h2>
+        <table>
+          <thead><tr><th>策略</th><th>可测性</th><th>产品效果</th><th>风险</th></tr></thead>
+          <tbody>
+            <tr><td>规则 + phrases 匹配</td><td>高</td><td>覆盖有限</td><td>自然表达泛化弱</td></tr>
+            <tr><td>mock embedding + 规则混合</td><td>高</td><td>能模拟语义召回</td><td>真实效果待验证</td></tr>
+            <tr><td>OpenAI embedding</td><td>中</td><td>更接近真实语义</td><td>依赖网络、成本和降级策略</td></tr>
+          </tbody>
+        </table>
+        <div class="question">
+          <h3>Q4：Iteration 09 的第一切片采用哪种召回策略？</h3>
+          <label class="option"><input type="radio" name="retrieval_strategy" value="mock_plus_rules" checked><div><strong>mock embedding + 规则混合</strong><span>先保证 TDD 和接口稳定，再接真实 provider。</span></div></label>
+          <label class="option"><input type="radio" name="retrieval_strategy" value="rules_only"><div><strong>规则匹配优先</strong><span>更简单，但可能不像 RAG。</span></div></label>
+          <label class="option"><input type="radio" name="retrieval_strategy" value="real_embedding"><div><strong>直接接真实 embedding</strong><span>更贴近最终效果，但验证和配置成本更高。</span></div></label>
+          <textarea name="retrieval_notes" placeholder="补充 provider、降级、成本或测试要求。"></textarea>
+        </div>
+      </section>
+
+      <section data-title="接口数据">
+        <h2>5. 接口与数据边界</h2>
+        <p>默认复用 Iteration 08 的 <code>choice_request</code>，让 RAG 结果成为选项来源，而不是新增一组用户入口。</p>
+        <pre>{
+  "field": "preference_tags",
+  "options": [
+    {
+      "label": "成熟路线看雪为主",
+      "value": "managed_snow_view",
+      "source": { "type": "tag_retrieval", "tag": "managed_snow_view" }
+    }
+  ]
+}</pre>
+        <div class="question">
+          <h3>Q5：RAG 召回元数据应该怎么暴露？</h3>
+          <label class="option"><input type="radio" name="metadata_exposure" value="payload_internal" checked><div><strong>仅 payload/日志可见</strong><span>前端只展示选项，不展示置信度。</span></div></label>
+          <label class="option"><input type="radio" name="metadata_exposure" value="frontend_reason"><div><strong>前端展示简短来源说明</strong><span>例如“根据你提到的玩雪和安全优先”。</span></div></label>
+          <label class="option"><input type="radio" name="metadata_exposure" value="full_trace"><div><strong>返回完整 retrieval_trace</strong><span>便于调试，但接口更重。</span></div></label>
+          <textarea name="api_notes" placeholder="补充接口、payload、context_state 字段或错误语义要求。"></textarea>
+        </div>
+      </section>
+
+      <section data-title="验收">
+        <h2>6. 测试与验收口径</h2>
+        <div class="grid">
+          <div class="box"><strong>成功路径</strong><span class="muted">自然表达召回标签，生成选择卡，提交后写入标准字段。</span></div>
+          <div class="box"><strong>失败路径</strong><span class="muted">无命中、非法 value、旧 choice_request、provider 失败。</span></div>
+          <div class="box"><strong>权限</strong><span class="muted">不能提交或恢复他人 TripPlan 的选择请求。</span></div>
+          <div class="box"><strong>降级</strong><span class="muted">召回不可用时回到 Iteration 08 基础选择卡。</span></div>
+        </div>
+        <div class="question">
+          <h3>Q6：第一切片的完成定义选哪些？</h3>
+          <label class="option"><input type="checkbox" name="done_criteria" value="unit_tests" checked><div><strong>Service 单测</strong><span>覆盖知识库召回和选择卡生成。</span></div></label>
+          <label class="option"><input type="checkbox" name="done_criteria" value="api_tests" checked><div><strong>API 测试</strong><span>覆盖 messages 和 choice-results。</span></div></label>
+          <label class="option"><input type="checkbox" name="done_criteria" value="frontend_minimal" checked><div><strong>前端最小展示</strong><span>展示 RAG 选项但不制造安全承诺。</span></div></label>
+          <label class="option"><input type="checkbox" name="done_criteria" value="openapi_types" checked><div><strong>OpenAPI 与类型同步</strong><span>接口变更后生成并验证类型。</span></div></label>
+          <textarea name="acceptance_notes" placeholder="补充必须验收或可以延后的内容。"></textarea>
+        </div>
+      </section>
+
+      <section data-title="导出">
+        <h2>7. 导出回答</h2>
+        <p>点击生成 Markdown 后，把内容保存为：</p>
+        <pre>docs/01-iterations/iteration-09-tag-knowledge-base-rag-choice-cards/alignment/iteration-09-alignment-01-answers.md</pre>
+        <div class="export">
+          <button class="primary" type="button" onclick="generateMarkdown()">生成 Markdown</button>
+          <button type="button" onclick="downloadMarkdown()">下载 Markdown</button>
+          <textarea id="markdownOutput" placeholder="生成后的 Markdown 会出现在这里。"></textarea>
+        </div>
+      </section>
+
+      <div class="pager">
+        <button type="button" onclick="prevPage()">上一页</button>
+        <button type="button" class="primary" onclick="nextPage()">下一页</button>
+      </div>
+    </main>
+  </div>
+  <script>
+    const sections = Array.from(document.querySelectorAll("section"));
+    const nav = document.getElementById("nav");
+    let current = 0;
+
+    sections.forEach((section, index) => {
+      const button = document.createElement("button");
+      button.textContent = `${index + 1}. ${section.dataset.title}`;
+      button.onclick = () => showPage(index);
+      nav.appendChild(button);
+    });
+
+    function showPage(index) {
+      current = Math.max(0, Math.min(sections.length - 1, index));
+      sections.forEach((section, i) => section.classList.toggle("active", i === current));
+      Array.from(nav.children).forEach((button, i) => button.classList.toggle("active", i === current));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function prevPage() { showPage(current - 1); }
+    function nextPage() { showPage(current + 1); }
+
+    function valueOf(name) {
+      const checked = document.querySelector(`input[name="${name}"]:checked`);
+      return checked ? checked.value : "";
+    }
+
+    function valuesOf(name) {
+      return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(input => input.value);
+    }
+
+    function textOf(name) {
+      const el = document.querySelector(`[name="${name}"]`);
+      return el ? el.value.trim() : "";
+    }
+
+    function generateMarkdown() {
+      const lines = [
+        "# Iteration 09 Alignment 01 Answers",
+        "",
+        "Status: human-feedback",
+        "Created from: iteration-09-alignment-01.html",
+        "Suggested target: docs/01-iterations/iteration-09-tag-knowledge-base-rag-choice-cards/alignment/iteration-09-alignment-01-answers.md",
+        "",
+        "## Q1 Core Goal",
+        "",
+        `- goal_fit: ${valueOf("goal_fit")}`,
+        `- notes: ${textOf("goal_notes") || "(none)"}`,
+        "",
+        "## Q2 Out Of Scope",
+        "",
+        `- out_of_scope: ${valuesOf("out_of_scope").join(", ") || "(none)"}`,
+        `- notes: ${textOf("boundary_notes") || "(none)"}`,
+        "",
+        "## Q3 Knowledge Store",
+        "",
+        `- knowledge_store: ${valueOf("knowledge_store")}`,
+        `- notes: ${textOf("knowledge_notes") || "(none)"}`,
+        "",
+        "## Q4 Retrieval Strategy",
+        "",
+        `- retrieval_strategy: ${valueOf("retrieval_strategy")}`,
+        `- notes: ${textOf("retrieval_notes") || "(none)"}`,
+        "",
+        "## Q5 Metadata Exposure",
+        "",
+        `- metadata_exposure: ${valueOf("metadata_exposure")}`,
+        `- notes: ${textOf("api_notes") || "(none)"}`,
+        "",
+        "## Q6 Acceptance",
+        "",
+        `- done_criteria: ${valuesOf("done_criteria").join(", ") || "(none)"}`,
+        `- notes: ${textOf("acceptance_notes") || "(none)"}`,
+        ""
+      ];
+      document.getElementById("markdownOutput").value = lines.join("\n");
+    }
+
+    function downloadMarkdown() {
+      generateMarkdown();
+      const blob = new Blob([document.getElementById("markdownOutput").value], { type: "text/markdown;charset=utf-8" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "iteration-09-alignment-01-answers.md";
+      link.click();
+      URL.revokeObjectURL(link.href);
+    }
+
+    showPage(0);
+  </script>
+</body>
+</html>

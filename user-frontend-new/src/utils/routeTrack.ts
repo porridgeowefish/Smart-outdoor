@@ -4,7 +4,7 @@
  * 核心功能：
  * - extractLineCoordinates: 从各种 GeoJSON 结构中提取坐标点
  * - toAmapPath: WGS84 坐标转为高德 GCJ02 坐标
- * - buildElevationColoredGroups: 按相对海拔分级着色（绿→红 = 低→高）
+ * - buildElevationColoredGroups: 按相对海拔分级着色（苔绿→岩蓝 = 低→高）
  * - buildSlopeColoredGroups: 按坡度分级着色（暂保留，待坡度算法优化后切回）
  */
 
@@ -29,11 +29,11 @@ const SLOPE_COLORS = [
 ]
 
 const ELEVATION_COLORS = [
-  '#22c55e',
-  '#84cc16',
-  '#eab308',
-  '#f97316',
-  '#ef4444',
+  '#2f9e72',
+  '#6aa84f',
+  '#c2a64b',
+  '#9a8f7a',
+  '#5b7c99',
 ]
 
 /**
@@ -113,7 +113,7 @@ export function buildSlopeColoredGroups(points: TrackCoordinate[], coordinateSys
 
 /**
  * 按相对海拔将轨迹分段着色。
- * 使用当前轨迹自己的最低/最高海拔做归一化，低海拔为绿色，高海拔逐步过渡到红色。
+ * 使用当前轨迹自己的最低/最高海拔做归一化，低海拔为苔绿，高海拔逐步过渡到岩蓝。
  */
 export function buildElevationColoredGroups(points: TrackCoordinate[], coordinateSystem: string): ColoredTrackGroup[] {
   if (points.length < 2) return []

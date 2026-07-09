@@ -1,19 +1,20 @@
 # Acceptance Criteria
 
-Status: draft
+Status: active
 Owner: project maintainer
-Last reviewed: 2026-05-08
-Source of truth: product acceptance and tests.
+Last reviewed: 2026-06-14
+Source of truth: acceptance checklist for Iteration 06.
 
-```text
-个人中心可以上传一条完成轨迹。
-上传成功后生成 activity_track。
-上传成功后刷新 user_ability_profile。
-页面可以展示活动记录列表。
-页面可以展示耐力、爬坡能力、最大距离、最大爬升、可信度。
-能力画像返回 generated_from_activity_track_ids、metrics_json 和 message。
-没有画像时 GET /api/me/ability-profile 返回 404 ABILITY_PROFILE_NOT_FOUND。
-上传 activity_track 不污染线路库。
-activity_track 不会被当作 route_asset 使用。
-Agent 后续可以读取 user_ability_profile 作为推荐输入。
-```
+- [US-06.1] 用户可以在个人中心上传一条完成轨迹。
+- [US-06.1] 上传成功后，系统保存该轨迹为完成活动记录。
+- [US-06.1] 上传完成轨迹不会污染线路库，也不会被当作线路资产使用。
+- [US-06.1] 不支持的文件类型上传时，系统给出明确错误。
+- [US-06.1] 轨迹无法解析时，系统给出明确错误，且不会留下任何活动记录。
+- [US-06.2] 上传成功后，系统刷新能力画像，体现耐力、爬坡能力、等级、近期最大距离和最大爬升。
+- [US-06.2] 能力画像的可信度会随完成活动数量和分析质量变化。
+- [US-06.2] 能力画像能体现它由哪些完成活动生成。
+- [US-06.3] 用户可以在个人中心查看已上传的完成活动列表。
+- [US-06.3] 活动列表只包含用户自己的完成活动，不混入线路资产。
+- [US-06.3] 每条活动展示距离、爬升、移动时间、日期、位置和配速等信息。
+- [US-06.4] 用户可以在个人中心查看当前能力画像和可信度提示。
+- [US-06.4] 用户尚未上传成功任何完成轨迹时，查看能力画像返回未找到的提示。

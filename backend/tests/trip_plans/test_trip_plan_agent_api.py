@@ -121,31 +121,29 @@ def test_choice_results_update_context_and_continue_workflow(
     trip_plan_id = body["trip_plan_id"]
     choice_request_id = body["choice_request"]["choice_request_id"]
 
+    answers = []
+    for question in body["choice_request"]["questions"]:
+        if question["field"] == "transport_hint":
+            answers.append({"field": "transport_hint", "value": "self_drive", "label": "自驾", "custom_text": None})
+        elif question["field"] == "current_location":
+            answers.append({"field": "current_location", "value": "chengdu", "label": "成都", "custom_text": None})
+        else:
+            answers.append({"field": question["field"], "value": "x", "label": "x", "custom_text": "x"})
     choice_response = client.post(
         f"/api/trip-plans/{trip_plan_id}/choice-results",
         headers=auth_headers,
-        json={
-            "choice_request_id": choice_request_id,
-            "answers": [
-                {
-                    "field": "transport_hint",
-                    "value": "self_drive",
-                    "label": "自驾",
-                    "custom_text": None,
-                }
-            ],
-        },
+        json={"choice_request_id": choice_request_id, "answers": answers},
     )
 
     assert choice_response.status_code == 200
     choice_body = choice_response.json()
     assert choice_body["run_status"] == "succeeded"
     assert choice_body["choice_request"] is None
-    assert choice_body["confirmed_context"]["items"][-1] == {
-        "field": "transport_hint",
-        "label": "交通",
-        "value": "自驾",
-    }
+    transport_item = next(
+        item for item in choice_body["confirmed_context"]["items"]
+        if item["field"] == "transport_hint"
+    )
+    assert transport_item == {"field": "transport_hint", "label": "交通", "value": "自驾"}
     assert len(choice_body["candidate_routes"]) == 3
 
     detail_response = client.get(
@@ -201,16 +199,17 @@ def test_answered_choice_request_cannot_be_submitted_again(
         json={"content": "周末从成都出发想徒步"},
     )
     body = first_response.json()
+    answers = []
+    for question in body["choice_request"]["questions"]:
+        if question["field"] == "transport_hint":
+            answers.append({"field": "transport_hint", "value": "self_drive", "label": "自驾", "custom_text": None})
+        elif question["field"] == "current_location":
+            answers.append({"field": "current_location", "value": "chengdu", "label": "成都", "custom_text": None})
+        else:
+            answers.append({"field": question["field"], "value": "x", "label": "x", "custom_text": "x"})
     payload = {
         "choice_request_id": body["choice_request"]["choice_request_id"],
-        "answers": [
-            {
-                "field": "transport_hint",
-                "value": "self_drive",
-                "label": "自驾",
-                "custom_text": None,
-            }
-        ],
+        "answers": answers,
     }
 
     first_submit = client.post(
@@ -503,3 +502,112 @@ def test_user_cannot_access_other_users_agent_run_or_candidate(
 
     assert events_response.status_code == 404
     assert detail_response.status_code == 404
+
+
+def test_first_choice_request_includes_current_location_question(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    response = client.post(
+        "/api/trip-plans/messages",
+        headers=auth_headers,
+        json={"content": "周末从成都出发看雪山"},
+    )
+    questions = response.json()["choice_request"]["questions"]
+    fields = [question["field"] for question in questions]
+
+    assert "current_location" in fields
+    assert len(questions) <= 3
+    geo_question = next(q for q in questions if q["field"] == "current_location")
+    assert geo_question["type"] == "single_choice"
+    assert geo_question["allow_custom"] is True
+    assert any(option["label"] == "成都" for option in geo_question["options"])
+
+
+def test_current_location_choice_geocoded_into_confirmed_context(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    first = client.post(
+        "/api/trip-plans/messages",
+        headers=auth_headers,
+        json={"content": "周末从成都出发看雪山"},
+    )
+    body = first.json()
+    answers = []
+    for question in body["choice_request"]["questions"]:
+        if question["field"] == "current_location":
+            answers.append({"field": "current_location", "value": "shenzhen", "label": "深圳", "custom_text": None})
+        elif question["field"] == "transport_hint":
+            answers.append({"field": "transport_hint", "value": "self_drive", "label": "自驾", "custom_text": None})
+        else:
+            answers.append({"field": question["field"], "value": "x", "label": "x", "custom_text": "x"})
+    choice = client.post(
+        f"/api/trip-plans/{body['trip_plan_id']}/choice-results",
+        headers=auth_headers,
+        json={"choice_request_id": body["choice_request"]["choice_request_id"], "answers": answers},
+    )
+
+    assert choice.status_code == 200
+    items = choice.json()["confirmed_context"]["items"]
+    location_item = next(item for item in items if item["field"] == "current_location")
+    assert location_item == {"field": "current_location", "label": "当前位置", "value": "深圳"}
+
+
+def test_current_location_custom_text_used_as_raw_text(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    first = client.post(
+        "/api/trip-plans/messages",
+        headers=auth_headers,
+        json={"content": "周末从成都出发看雪山"},
+    )
+    body = first.json()
+    answers = []
+    for question in body["choice_request"]["questions"]:
+        if question["field"] == "current_location":
+            answers.append({"field": "current_location", "value": "custom", "label": "昆明", "custom_text": "昆明"})
+        elif question["field"] == "transport_hint":
+            answers.append({"field": "transport_hint", "value": "self_drive", "label": "自驾", "custom_text": None})
+        else:
+            answers.append({"field": question["field"], "value": "x", "label": "x", "custom_text": "x"})
+    choice = client.post(
+        f"/api/trip-plans/{body['trip_plan_id']}/choice-results",
+        headers=auth_headers,
+        json={"choice_request_id": body["choice_request"]["choice_request_id"], "answers": answers},
+    )
+
+    assert choice.status_code == 200
+    items = choice.json()["confirmed_context"]["items"]
+    location_item = next(item for item in items if item["field"] == "current_location")
+    assert location_item == {"field": "current_location", "label": "当前位置", "value": "昆明"}
+
+
+def test_departure_area_text_card_geocoded_into_confirmed_context(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    first = client.post(
+        "/api/trip-plans/messages",
+        headers=auth_headers,
+        json={"content": "想去徒步"},
+    )
+    body = first.json()
+    fields = [question["field"] for question in body["choice_request"]["questions"]]
+    assert "departure_area" in fields
+
+    answers = []
+    for question in body["choice_request"]["questions"]:
+        if question["field"] == "departure_area":
+            answers.append({"field": "departure_area", "value": "成都", "label": "成都", "custom_text": "成都"})
+        elif question["field"] == "current_location":
+            answers.append({"field": "current_location", "value": "chengdu", "label": "成都", "custom_text": None})
+        else:
+            answers.append({"field": question["field"], "value": "周末", "label": "周末", "custom_text": "周末"})
+    choice = client.post(
+        f"/api/trip-plans/{body['trip_plan_id']}/choice-results",
+        headers=auth_headers,
+        json={"choice_request_id": body["choice_request"]["choice_request_id"], "answers": answers},
+    )
+
+    assert choice.status_code == 200
+    items = choice.json()["confirmed_context"]["items"]
+    departure_item = next(item for item in items if item["field"] == "departure_area")
+    assert departure_item == {"field": "departure_area", "label": "出发地", "value": "成都"}

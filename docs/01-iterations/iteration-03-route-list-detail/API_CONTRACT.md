@@ -1,32 +1,40 @@
 # API Contract
 
-Status: draft
+Status: superseded (Iteration 07)
 Owner: project maintainer
-Last reviewed: 2026-05-08
+Last reviewed: 2026-06-14
 Source of truth: Pydantic V2 schemas and `/openapi.json`.
 
-> Superseded by Iteration 07: `track_preview` 和详情轨迹契约在 Iteration 07 改为数据库高保真 preview + 对象存储 full track_geojson。当前文件保留 Iteration 03 历史交付边界。
+> Superseded by Iteration 07：`track_preview` 与详情轨迹契约在 Iteration 07 改为数据库高保真 preview + 对象存储 full track_geojson。本文件保留 Iteration 03 历史交付边界。
 
-## GET /api/routes
+## 端点
 
-用途：线路列表、搜索和标签筛选。
+| 方法 | 路径 | 本轮变化 |
+|---|---|---|
+| GET | `/api/routes` | 新增：列表 + 筛选 + 分页 |
+| GET | `/api/routes/tag-taxonomy` | 新增：标签分类 |
+| GET | `/api/routes/{route_id}` | 新增：线路详情 |
 
-Query:
+## 请求 / 响应示例
+
+### GET /api/routes
+
+Query：
 
 ```text
-keyword
-visibility = public / private / all
-min_distance_km
-max_distance_km
-min_elevation_gain_m
-max_elevation_gain_m
-tags
-tag_match_mode = any / all
-page
-page_size
+keyword: str
+visibility: "public" | "private" | "all"   默认 all
+min_distance_km: float
+max_distance_km: float
+min_elevation_gain_m: float
+max_elevation_gain_m: float
+tags: str
+tag_match_mode: "any" | "all"             默认 any
+page: int                                  默认 1
+page_size: int                             默认 20
 ```
 
-Response:
+Response：
 
 ```json
 {
@@ -52,65 +60,34 @@ Response:
       }
     }
   ],
-  "pagination": {
-    "page": 1,
-    "page_size": 20,
-    "total": 1
-  }
+  "pagination": {"page": 1, "page_size": 20, "total": 1}
 }
 ```
 
-字段说明：
+可见性规则：
 
 ```text
-cover_image_url
-线路封面图 URL，用于卡片主图。
-
-track_preview
-线路轨迹轻量预览，用于列表卡片中的小地图或路线轮廓，不是封面图。
-当前实现从 route_analysis_snapshots.track_geojson.coordinates 等距采样，最多 80 个点。
-它不是 Douglas-Peucker 等高保真几何压缩算法。
-
-manual_tags
-用户上传线路时保存的原始标签字典。
-
-display_tags
-从 manual_tags 的列表值扁平化后取前 3 个，用于卡片快速展示。
-当前实现不从 analysis_json 派生 display_tags。
+visibility=all      → public + 当前用户自己的 private
+visibility=public   → 仅 public
+visibility=private  → 仅当前用户自己的 private
+其他用户的 private 永不返回
 ```
 
-权限规则：
+### GET /api/routes/tag-taxonomy
 
-```text
-visibility=all 表示 public + 当前用户自己的 private
-visibility=public 只返回 public
-visibility=private 只返回当前用户自己的 private
-其他用户 private 不会返回
-```
-
-## GET /api/routes/tag-taxonomy
-
-用途：获取前端线路标签选择器使用的标签分类。
-
-Response:
+Response：
 
 ```json
 {
   "categories": [
-    {
-      "key": "scenery",
-      "label": "风光与场景",
-      "tags": ["森林", "溪流", "雪山"]
-    }
+    {"key": "scenery", "label": "风光与场景", "tags": ["森林", "溪流", "雪山"]}
   ]
 }
 ```
 
-## GET /api/routes/{route_id}
+### GET /api/routes/{route_id}
 
-用途：线路本体详情。
-
-Response:
+Response：
 
 ```json
 {
@@ -122,10 +99,7 @@ Response:
   "visibility": "public",
   "source_type": "user_upload",
   "source_name": null,
-  "manual_tags": {
-    "scenery": ["雪山"],
-    "transport_facility": ["自驾友好"]
-  },
+  "manual_tags": {"scenery": ["雪山"], "transport_facility": ["自驾友好"]},
   "analysis": {
     "route_analysis_snapshot_id": "analysis_1",
     "distance_km": 15.2,
@@ -137,24 +111,23 @@ Response:
     "steep_ratio": null,
     "start_point": {"lon": 102.9, "lat": 31.0},
     "end_point": {"lon": 102.91, "lat": 31.01},
-    "bounds": {
-      "min_lon": 102.9,
-      "min_lat": 31.0,
-      "max_lon": 102.91,
-      "max_lat": 31.01
-    },
+    "bounds": {"min_lon": 102.9, "min_lat": 31.0, "max_lon": 102.91, "max_lat": 31.01},
     "center_point": {"lon": 102.905, "lat": 31.005},
     "analysis_json": {}
+  },
+  "track_preview": {
+    "format": "geojson",
+    "coordinate_system": "wgs84",
+    "point_count": 842,
+    "geojson": {"type": "LineString", "coordinates": [[102.9, 31.0]]}
   },
   "track": {
     "format": "geojson",
     "coordinate_system": "wgs84",
-    "simplified": true,
+    "source": "derived_full_geojson",
     "point_count": 842,
-    "geojson": {
-      "type": "LineString",
-      "coordinates": [[102.9, 31.0], [102.91, 31.01]]
-    }
+    "track_url": "/api/routes/route_1/track",
+    "geojson": null
   },
   "primary_file": {
     "file_id": "file_1",
@@ -162,32 +135,29 @@ Response:
     "file_url": "/static/routes/route_1/file_1.gpx",
     "parse_status": "parsed"
   },
-  "actions": {
-    "can_send_to_trip_plan": true,
-    "can_download_file": false,
-    "can_edit": true
-  }
+  "actions": {"can_send_to_trip_plan": true, "can_download_file": false, "can_edit": true}
 }
 ```
 
-字段说明：
+详情字段说明：
 
 ```text
-visibility
-线路资产可见性，public / private。用于详情展示，不是权限判断本身。
-
-actions
-当前详情响应里的 UI 能力标志。
-can_send_to_trip_plan 当前恒为 true，但本迭代没有实现 send-to-trip-plan API。
-can_download_file 当前恒为 false，本迭代没有实现下载 API。
-can_edit 表示创建者或 admin 的编辑入口可见性，本迭代没有实现编辑 API。
+actions.can_send_to_trip_plan  本轮恒为 true，但本轮未实现 send-to-trip-plan API。
+actions.can_download_file      本轮恒为 false，本轮未实现下载 API。
+actions.can_edit               创建者或 admin 为 true，本轮未实现编辑 API。
+track.geojson                  详情恒为 null；完整 geojson 由 GET /api/routes/{route_id}/track 取得。
 ```
 
-设计边界：
+详情不返回：规划建议 / 天气 / 交通 / snapshot 生成。
 
-```text
-不返回本次规划建议
-不查询天气
-不查询交通
-不生成 snapshot
-```
+## 错误码
+
+| HTTP | code | 触发 |
+|---|---|---|
+| 401 | AUTH_REQUIRED | 未登录访问（get_current_user 强制）。 |
+| 404 | ROUTE_NOT_FOUND | route_id 不存在或当前用户无权查看（含他人 private）。 |
+
+## 历史来源
+
+- ../iteration-07-high-fidelity-track-preview/API_CONTRACT.md（超越本轮 track 契约）
+- backend/app/features/routes/router.py、schemas.py

@@ -1,33 +1,26 @@
 # API Contract
 
-Status: draft
+Status: active
 Owner: project maintainer
-Last reviewed: 2026-05-15
+Last reviewed: 2026-06-14
 Source of truth: Pydantic V2 schemas and `/openapi.json` after implementation.
 
-## 本轮接口策略
+## 端点
 
-Iteration 07 将文件上传改为两阶段：
+| 方法 | 路径 | 本轮变化 |
+|---|---|---|
+| POST | `/api/storage/upload-credentials` | 新增：生成前端直传用的临时上传凭据 |
+| PATCH | `/api/me` | 新增可写 `avatar`（ImageAssetMetadata）；响应含 `avatar_url` 等头像字段 |
+| POST | `/api/routes/upload` | 从 multipart 文件上传改为 JSON metadata complete；接收已直传轨迹/封面 metadata |
+| GET | `/api/routes` | 响应 `cover_image_url` 改为 thumbnail；新增 `track_preview` |
+| GET | `/api/routes/{route_id}` | 响应新增 `track_preview`、`track.track_url`、`primary_file` |
+| GET | `/api/routes/{route_id}/track` | 新增：返回完整派生 full track_geojson |
 
-```text
-阶段 A：前端向后端申请临时上传凭据。
-阶段 B：前端直传文件后，把 url、storage_key 和 variants metadata 提交给业务接口 complete。
-```
+> Superseded by iter-07：旧 `POST /api/routes/upload` 的 multipart/form-data 契约被本轮直接替换，不保留并行 legacy 上传接口。
 
-旧的 `POST /api/routes/upload multipart/form-data` 契约被本轮直接替换，不保留并行 legacy 上传接口。
+## 请求 / 响应示例
 
-新增或改造接口：
-
-```text
-POST /api/storage/upload-credentials
-PATCH /api/me
-POST /api/routes/upload
-GET /api/routes
-GET /api/routes/{route_id}
-GET /api/routes/{route_id}/track
-```
-
-## POST /api/storage/upload-credentials
+### POST /api/storage/upload-credentials
 
 用途：生成前端直传使用的临时上传凭据。
 
@@ -57,9 +50,9 @@ Response:
 ```json
 {
   "storage_provider": "cos",
-  "storage_key": "users/user_1/avatar/display.webp",
+  "storage_key": "users/user_1/avatar/display-<token>.webp",
   "upload_url": "https://storage.example.com/upload-signed-url",
-  "public_url": "https://cdn.example.com/users/user_1/avatar/display.webp",
+  "public_url": "https://cdn.example.com/users/user_1/avatar/display-<token>.webp",
   "headers": {
     "Content-Type": "image/webp"
   },
@@ -67,17 +60,9 @@ Response:
 }
 ```
 
-规则：
+local provider 的 `upload_url` 形如 `/api/storage/local-upload?key=...`（后端兼容上传入口），凭据契约与云 provider 一致。
 
-```text
-后端必须限制 storage_key 前缀归属。
-凭据必须有过期时间。
-前端不能用头像凭据上传路线文件。
-local provider 可以返回本地等价 upload_url 或后端兼容上传入口。
-云端 provider 优先使用腾讯云 COS。
-```
-
-## PATCH /api/me
+### PATCH /api/me
 
 用途：更新当前用户资料，并保存头像处理后版本 metadata。
 
@@ -86,25 +71,24 @@ Request:
 ```json
 {
   "nickname": "Demo",
-  "bio": "喜欢轻徒步",
   "avatar": {
     "storage_provider": "object_storage",
-    "storage_key": "users/user_1/avatar/display.webp",
-    "url": "https://cdn.example.com/users/user_1/avatar/display.webp",
+    "storage_key": "users/user_1/avatar/display-<token>.webp",
+    "url": "https://cdn.example.com/users/user_1/avatar/display-<token>.webp",
     "original_filename": "avatar.jpg",
     "processing_status": "ready",
     "variants": {
       "display": {
-        "storage_key": "users/user_1/avatar/display.webp",
-        "url": "https://cdn.example.com/users/user_1/avatar/display.webp",
+        "storage_key": "users/user_1/avatar/display-<token>.webp",
+        "url": "https://cdn.example.com/users/user_1/avatar/display-<token>.webp",
         "width": 512,
         "height": 512,
         "content_type": "image/webp",
         "size_bytes": 120000
       },
       "thumbnail": {
-        "storage_key": "users/user_1/avatar/thumbnail.webp",
-        "url": "https://cdn.example.com/users/user_1/avatar/thumbnail.webp",
+        "storage_key": "users/user_1/avatar/thumbnail-<token>.webp",
+        "url": "https://cdn.example.com/users/user_1/avatar/thumbnail-<token>.webp",
         "width": 128,
         "height": 128,
         "content_type": "image/webp",
@@ -122,20 +106,15 @@ Response 关键字段：
   "id": "user_1",
   "username": "demo",
   "nickname": "Demo",
-  "avatar_url": "https://cdn.example.com/users/user_1/avatar/display.webp"
+  "avatar_url": "https://cdn.example.com/users/user_1/avatar/display-<token>.webp",
+  "avatar_storage_provider": "object_storage",
+  "avatar_storage_key": "users/user_1/avatar/display-<token>.webp",
+  "avatar_variants": { "...": "见 request.variants" },
+  "avatar_processing_status": "ready"
 }
 ```
 
-规则：
-
-```text
-avatar_url = avatar_variants.display.url。
-avatar_storage_key = avatar_variants.display.storage_key。
-后端不接收图片原图。
-后端保存 variants metadata 并校验 key 归属。
-```
-
-## POST /api/routes/upload
+### POST /api/routes/upload
 
 用途：路线上传 complete。真实文件已由前端直传，本接口接收 metadata，完成数据库入库、轨迹读取和解析。
 
@@ -147,7 +126,7 @@ Request:
   "description": "周末轻徒步",
   "visibility": "public",
   "manual_tags": {
-    "scenery": ["森林"]
+    "地形": ["山地"]
   },
   "track_file": {
     "storage_provider": "object_storage",
@@ -160,22 +139,22 @@ Request:
   },
   "cover_image": {
     "storage_provider": "object_storage",
-    "storage_key": "routes/route_tmp/cover/large.webp",
-    "url": "https://cdn.example.com/routes/route_tmp/cover/large.webp",
+    "storage_key": "routes/route_tmp/cover/large-<token>.webp",
+    "url": "https://cdn.example.com/routes/route_tmp/cover/large-<token>.webp",
     "original_filename": "cover.jpg",
     "processing_status": "ready",
     "variants": {
       "large": {
-        "storage_key": "routes/route_tmp/cover/large.webp",
-        "url": "https://cdn.example.com/routes/route_tmp/cover/large.webp",
+        "storage_key": "routes/route_tmp/cover/large-<token>.webp",
+        "url": "https://cdn.example.com/routes/route_tmp/cover/large-<token>.webp",
         "width": 1280,
         "height": 720,
         "content_type": "image/webp",
         "size_bytes": 450000
       },
       "thumbnail": {
-        "storage_key": "routes/route_tmp/cover/thumbnail.webp",
-        "url": "https://cdn.example.com/routes/route_tmp/cover/thumbnail.webp",
+        "storage_key": "routes/route_tmp/cover/thumbnail-<token>.webp",
+        "url": "https://cdn.example.com/routes/route_tmp/cover/thumbnail-<token>.webp",
         "width": 480,
         "height": 270,
         "content_type": "image/webp",
@@ -197,18 +176,7 @@ Response:
 }
 ```
 
-规则：
-
-```text
-后端用 track_file.storage_key 读取对象存储中的原始 bytes。
-checksum 由后端基于原始 bytes 计算。
-后端解析生成 route_analysis_snapshots。
-后端生成 full track_geojson 派生文件并写入 StorageService。
-后端生成 track_preview_geojson 并写入数据库。
-封面图片只保存前端上传后的 large / thumbnail metadata。
-```
-
-## GET /api/routes
+### GET /api/routes
 
 用途：线路列表。
 
@@ -220,9 +188,13 @@ Response 关键字段：
     {
       "route_id": "route_1",
       "name": "Demo Route",
-      "cover_image_url": "https://cdn.example.com/routes/route_1/cover/thumbnail.webp",
+      "cover_image_url": "https://cdn.example.com/routes/route_1/cover/thumbnail-<token>.webp",
+      "location": "成都",
+      "visibility": "public",
       "distance_km": 15.2,
       "elevation_gain_m": 860.0,
+      "manual_tags": { "...": "..." },
+      "display_tags": ["山地"],
       "track_preview": {
         "format": "geojson",
         "coordinate_system": "wgs84",
@@ -233,19 +205,12 @@ Response 关键字段：
         }
       }
     }
-  ]
+  ],
+  "pagination": { "page": 1, "page_size": 20, "total": 1 }
 }
 ```
 
-规则：
-
-```text
-cover_image_url 默认返回 thumbnail URL。
-track_preview 来自数据库 track_preview_geojson。
-track_preview 不使用最多 80 点硬限制。
-```
-
-## GET /api/routes/{route_id}
+### GET /api/routes/{route_id}
 
 用途：线路详情初始数据。
 
@@ -253,22 +218,22 @@ Response 关键字段：
 
 ```json
 {
-  "cover_image_url": "https://cdn.example.com/routes/route_1/cover/large.webp",
+  "route_id": "route_1",
+  "name": "Demo Route",
+  "cover_image_url": "https://cdn.example.com/routes/route_1/cover/large-<token>.webp",
   "track_preview": {
     "format": "geojson",
     "coordinate_system": "wgs84",
     "point_count": 420,
-    "geojson": {
-      "type": "LineString",
-      "coordinates": [[104.0, 30.0], [104.001, 30.001]]
-    }
+    "geojson": { "type": "LineString", "coordinates": [[104.0, 30.0]] }
   },
   "track": {
     "format": "geojson",
     "coordinate_system": "wgs84",
     "source": "derived_full_geojson",
     "point_count": 12840,
-    "track_url": "/api/routes/route_1/track"
+    "track_url": "/api/routes/route_1/track",
+    "geojson": null
   },
   "primary_file": {
     "file_id": "file_1",
@@ -279,15 +244,7 @@ Response 关键字段：
 }
 ```
 
-规则：
-
-```text
-详情初屏使用 track_preview。
-完整地图按需调用 GET /api/routes/{route_id}/track。
-primary_file.file_url 是原始文件 URL，不作为地图渲染主路径。
-```
-
-## GET /api/routes/{route_id}/track
+### GET /api/routes/{route_id}/track
 
 用途：获取完整派生 full track_geojson。
 
@@ -306,22 +263,24 @@ Response:
 }
 ```
 
-规则：
-
-```text
-后端先校验 route 可见性。
-后端从 track_geojson_storage_key 读取派生 GeoJSON。
-后续如文件过大，可改为返回短期 signed URL，但前端仍通过本接口取得受控访问入口。
-```
+后端先校验 route 可见性，再从 `track_geojson_storage_key` 读取派生 GeoJSON。后续如文件过大，可改为返回短期 signed URL，但前端仍通过本接口取得受控访问入口。
 
 ## 错误码
 
-```text
-401 UNAUTHORIZED
-400 UNSUPPORTED_FILE_TYPE
-400 INVALID_MANUAL_TAGS
-400 INVALID_STORAGE_OBJECT
-400 STORAGE_OBJECT_NOT_FOUND
-400 TRACK_PARSE_FAILED
-404 ROUTE_NOT_FOUND
-```
+| HTTP | code | 触发 |
+|---|---|---|
+| 401 | UNAUTHORIZED | 未登录访问受保护接口 |
+| 400 | UNSUPPORTED_FILE_TYPE | 轨迹文件非 GPX/KML/GeoJSON |
+| 400 | UNSUPPORTED_COVER_IMAGE_TYPE | 封面图非 JPEG/PNG/WebP |
+| 400 | INVALID_MANUAL_TAGS | manual_tags 不是合法 JSON 对象 |
+| 400 | INVALID_STORAGE_OBJECT | storage metadata/key 不合法或不属于当前用户 |
+| 400 | STORAGE_OBJECT_NOT_FOUND | storage_key 对应对象不存在（读取/解析时） |
+| 400 | TRACK_PARSE_FAILED | 活动轨迹解析失败（parse_error 落库，资产/文件记录保留） |
+| 404 | ROUTE_NOT_FOUND | 路线不存在或对当前用户不可见 |
+| 503 | STORAGE_PROVIDER_NOT_CONFIGURED | 云 provider 凭据缺失或 SDK 不可用 |
+
+## 历史来源
+
+- [API_CONTRACT_STRATEGY.md](../../00-product-and-architecture/API_CONTRACT_STRATEGY.md)
+- [DATABASE_DESIGN.md](./DATABASE_DESIGN.md)
+- [DELIVERY_NOTES.md](./DELIVERY_NOTES.md)

@@ -1,9 +1,17 @@
 # API Contract
 
-Status: draft
+Status: active
 Owner: project maintainer
-Last reviewed: 2026-05-08
+Last reviewed: 2026-06-14
 Source of truth: Pydantic V2 schemas and `/openapi.json`.
+
+## 端点
+
+| 方法 | 路径 | 用途 |
+|---|---|---|
+| POST | `/api/trip-plans/{trip_plan_id}/candidate-routes/{candidate_id}/save` | 保存候选为规划快照（成功返回 201） |
+| GET | `/api/my/route-plan-snapshots` | 获取当前用户保存的规划快照列表 |
+| GET | `/api/my/route-plan-snapshots/{snapshot_id}` | 查看保存时刻的规划详情 |
 
 ## POST /api/trip-plans/{trip_plan_id}/candidate-routes/{candidate_id}/save
 
@@ -12,10 +20,10 @@ Source of truth: Pydantic V2 schemas and `/openapi.json`.
 Request:
 
 ```text
-当前无 request body。
+无 request body。
 ```
 
-Response:
+Response（201）:
 
 ```json
 {
@@ -50,13 +58,6 @@ Response:
   },
   "created_at": "2026-05-08T12:30:00+00:00"
 }
-```
-
-错误码：
-
-```text
-CANDIDATE_ROUTE_NOT_FOUND
-ROUTE_PLAN_SNAPSHOT_EXISTS
 ```
 
 ## GET /api/my/route-plan-snapshots
@@ -134,35 +135,20 @@ Response:
 }
 ```
 
-当前响应不包含：
+当前响应不包含：`user_note` / `share_text` / `saved_at` / `actions`。
 
-```text
-user_note
-share_text
-saved_at
-actions
-```
+前端跳转：`response.route.route_id` 可用于进入线路本体详情（`GET /api/routes/{route_id}`）。
 
-前端跳转：
+## 错误码
 
-```text
-response.route.route_id 可用于跳转线路资产详情：
-GET /api/routes/{route_id}
-```
+| HTTP | code | 触发 |
+|---|---|---|
+| 401 | UNAUTHORIZED | 未登录或登录已失效。 |
+| 404 | CANDIDATE_ROUTE_NOT_FOUND | 保存时指定的候选不存在或不属于当前用户 / TripPlan。 |
+| 409 | ROUTE_PLAN_SNAPSHOT_EXISTS | 同一 candidate 已保存过快照。 |
+| 404 | ROUTE_PLAN_SNAPSHOT_NOT_FOUND | 详情查询的快照不存在或不属于当前用户。 |
 
-错误码：
+## 历史来源
 
-```text
-ROUTE_PLAN_SNAPSHOT_NOT_FOUND
-```
-
-设计边界：
-
-```text
-点击候选详情不创建 snapshot
-点击保存才创建 snapshot
-snapshot.route 是保存时复制的 route_summary，不随 route_asset 后续变化自动变化
-snapshot.route.route_id 仍指向原 route_asset，可进入线路本体详情
-snapshot.planning_detail / evidence 是保存时复制的候选详情内容
-详情可以通过 continue_trip_plan_id 回到来源 TripPlan
-```
+- [US-01_API_CONTRACT.md](../../99-archive/backend-docs-legacy/US-01_API_CONTRACT.md)
+- DATABASE_DESIGN.md（route_plan_snapshots 字段与约束）

@@ -27,17 +27,23 @@ Iteration 03 Route List + Detail
 Iteration 04 TripPlan + Agent Workflow
 Iteration 05 Snapshot / 我的规划
 Iteration 06 Ability Profile
+Iteration 07 Object Storage + Image Assets
+Iteration 08 Agent V2 Choice-based Requirement Convergence
+Iteration 09 Tag Knowledge Base + RAG-assisted Choice Cards
 ```
 
 后续候选顺序建议：
 
 ```text
-Iteration 07 Object Storage + Image Assets
-Iteration 08 Agent V2 Choice-based Requirement Convergence
-Iteration 09 Tag Knowledge Base + RAG-assisted Choice Cards
 Iteration 10 Route Retrieval Rerank + Ability Match
 Iteration 11 Two-stage Planning Workflow + LangGraph
 Iteration 12 Evidence Detail Card + SSE Progress
+```
+
+Iteration 09 已于 2026-05-23 进入正式迭代对齐阶段，事实源迁移到：
+
+```text
+docs/01-iterations/iteration-09-tag-knowledge-base-rag-choice-cards/
 ```
 
 ## Iteration 07：对象存储与图片资产处理

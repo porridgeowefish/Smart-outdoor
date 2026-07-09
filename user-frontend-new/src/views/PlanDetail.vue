@@ -42,26 +42,35 @@
           </div>
         </div>
 
-        <div class="mb-6 border-l-4 border-indigo-500 bg-indigo-50/50 p-4">
-          <h3 class="mb-2 text-[15px] font-bold tracking-tight text-slate-800">为何推荐</h3>
-          <p class="text-justify text-[13.5px] font-medium leading-relaxed text-slate-700">{{ snapshot.recommendation_reason }}</p>
-        </div>
-
         <div class="mb-6 space-y-3 text-[13px] leading-relaxed text-slate-600">
-          <p><span class="font-bold text-slate-800">规划说明：</span>{{ snapshot.planning_detail.summary || '暂无说明' }}</p>
-          <p><span class="font-bold text-slate-800">天气：</span>{{ snapshot.evidence.weather?.summary || '未确认' }}</p>
-          <p><span class="font-bold text-slate-800">交通：</span>{{ snapshot.evidence.transport?.summary || '未确认' }}</p>
-          <p><span class="font-bold text-slate-800">近期路况：</span>{{ snapshot.evidence.web_evidence?.summary || '未确认' }}</p>
-        </div>
-
-        <div class="mb-6 border border-slate-200 p-4 shadow-sm">
-          <div class="mb-2 flex items-center gap-2 text-[14px] font-bold text-slate-900">
-            <span class="h-2 w-2 rounded-full bg-red-500"></span>
-            风险提醒
+          <div class="rounded-2xl border border-sky-100 bg-sky-50/70 p-4">
+            <div class="mb-1 flex items-center justify-between gap-3">
+              <span class="font-bold text-slate-800">天气</span>
+              <span class="rounded-full bg-white px-2 py-0.5 text-[11px] font-bold text-slate-500">{{ statusLabel(snapshot.evidence.weather?.status) }}</span>
+            </div>
+            <p>{{ snapshot.evidence.weather?.summary || '未确认' }}</p>
+            <div v-if="weatherIndex" class="mt-2 grid grid-cols-2 gap-2 text-[12px]">
+              <span class="rounded-lg bg-white px-2 py-1">体感 {{ indexValue(weatherIndex.feels_like_c, '°C') }}</span>
+              <span class="rounded-lg bg-white px-2 py-1">风寒 {{ indexValue(weatherIndex.wind_chill_c, '°C') }}</span>
+              <span class="rounded-lg bg-white px-2 py-1">紫外线 {{ weatherIndex.uv_level || '未确认' }}</span>
+              <span class="rounded-lg bg-white px-2 py-1">体感等级 {{ weatherIndex.comfort_level || '未确认' }}</span>
+            </div>
+            <p v-if="highestWeather" class="mt-2 rounded-lg bg-white px-2 py-1 text-[12px] text-slate-500">
+              最高点约 {{ highestWeather.elevation_m }}m，估算气温 {{ indexValue(highestWeather.estimated_temp_c, '°C') }}。{{ highestWeather.basis }}
+            </p>
           </div>
-          <ul class="space-y-1 text-[13px] font-medium leading-relaxed text-slate-600">
-            <li v-for="note in riskNotes" :key="note">{{ note }}</li>
-          </ul>
+          <p><span class="font-bold text-slate-800">出行攻略：</span>{{ snapshot.planning_detail.summary || '暂无说明' }}</p>
+          <p><span class="font-bold text-slate-800">交通：</span>{{ snapshot.evidence.transport?.summary || '未确认' }}</p>
+          <p><span class="font-bold text-slate-800">沿途风光与公开信息：</span>{{ snapshot.evidence.web_evidence?.summary || '未确认' }}</p>
+          <div v-if="emergencyContacts.length" class="flex flex-wrap gap-1.5">
+            <span
+              v-for="contact in emergencyContacts"
+              :key="contact.phone"
+              class="rounded-md bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-600"
+            >
+              {{ contact.label }} {{ contact.phone }}
+            </span>
+          </div>
         </div>
 
         <button class="mb-3 w-full bg-emerald-500 px-5 py-3.5 text-[14px] font-bold text-white" @click="router.push(`/routes/${snapshot.route.route_id}`)">
@@ -86,9 +95,26 @@ const snapshot = ref<RoutePlanSnapshotDetailResponse | null>(null)
 const isLoading = ref(false)
 const errorMessage = ref('')
 
-const riskNotes = computed(() => {
-  const notes = snapshot.value?.planning_detail.risk_notes
-  return Array.isArray(notes) && notes.length ? notes.map(String) : ['近期路况未确认，出发前需要再次核实。']
+const weatherIndex = computed<Record<string, any> | null>(() => {
+  const value = snapshot.value?.evidence.weather?.outdoor_indices
+  return value && typeof value === 'object' ? value as Record<string, any> : null
+})
+
+const highestWeather = computed<Record<string, any> | null>(() => {
+  const value = snapshot.value?.evidence.weather?.highest_point_weather_estimate
+  return value && typeof value === 'object' ? value as Record<string, any> : null
+})
+
+const emergencyContacts = computed<Record<string, any>[]>(() => {
+  const contacts = snapshot.value?.evidence.web_evidence?.emergency_contacts
+  if (!Array.isArray(contacts)) return []
+  const seen = new Set<string>()
+  return contacts.filter((contact) => {
+    const phone = String(contact.phone || '')
+    if (!phone || seen.has(phone)) return false
+    seen.add(phone)
+    return true
+  })
 })
 
 onMounted(loadSnapshot)
@@ -112,5 +138,21 @@ function formatNumber(value: number, digits: number) {
 
 function formatDate(value: string) {
   return value.slice(0, 10)
+}
+
+function statusLabel(value: unknown) {
+  const map: Record<string, string> = {
+    confirmed: '已确认',
+    mocked: '模拟',
+    limited: '有限证据',
+    unconfirmed: '未确认',
+    unavailable: '不可用',
+  }
+  return map[String(value || '')] || '未确认'
+}
+
+function indexValue(value: unknown, unit = '') {
+  if (typeof value !== 'number' || Number.isNaN(value)) return '未确认'
+  return `${value}${unit}`
 }
 </script>

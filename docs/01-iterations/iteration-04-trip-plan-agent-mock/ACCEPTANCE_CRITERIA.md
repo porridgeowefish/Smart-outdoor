@@ -1,20 +1,28 @@
 # Acceptance Criteria
 
-Status: draft
+Status: active
 Owner: project maintainer
-Last reviewed: 2026-05-08
-Source of truth: product acceptance and tests.
+Last reviewed: 2026-06-14
+Source of truth: acceptance checklist for Iteration 04.
 
-```text
-聊天页发送消息后能看到 assistant 回复
-后端 SSE 事件回放接口可调用，但前端未接入，真实流式体验 pending
-信息充分时，前端从 POST /api/trip-plans/messages 响应体的 candidate_routes 渲染最多 3 张候选线路卡片
-候选线路必须来自数据库线路资产，不能由 LLM 编造
-天气 / 交通 / Web 证据查询发生在 top 3 候选确定之后
-点击卡片能看到候选详情
-候选详情可以通过 route.route_id 进入线路详情
-候选详情不会自动创建 snapshot
-信息不足时 Agent 能自然追问
-能回看 TripPlan 列表和某个 TripPlan 的消息历史
-不能访问其他用户的 TripPlan、AgentRun 或候选详情
-```
+- [US-04.1] 用户在聊天页发送消息后能看到 assistant 回复。
+- [US-04.1] 首次对话不携带 trip_plan_id 时创建新的规划；后续对话携带 trip_plan_id 时继续同一规划。
+- [US-04.1] 已关闭的规划不能继续追加消息。
+- [US-04.1] 信息不足时 Agent 能自然追问。
+- [US-04.1] 信息充分时，前端从响应体渲染最多 3 张候选线路卡片。
+- [US-04.1] 候选线路必须来自数据库线路资产，不能由 LLM 编造。
+- [US-04.1] 不能访问或继续其他用户的规划。
+- [US-04.2] 用户能查看自己的规划列表。
+- [US-04.2] 用户能查看某个规划的消息历史，并恢复最近一次候选卡片。
+- [US-04.3] 系统对外提供 AgentRun 的事件流接口。
+- [US-04.3] 事件流包含阶段变化、消息完成、候选更新、运行完成等事件（前端接入与真实流式体验 pending，不阻塞本轮验收）。
+- [US-04.4] 用户点击候选卡片能看到候选详情。
+- [US-04.4] 候选详情展示推荐理由、风险、证据与评分构成。
+- [US-04.4] 候选详情可通过路线标识进入线路本体详情。
+- [US-04.4] 查看候选详情不会自动创建快照。
+
+## 不验收为完成
+
+- 候选线路由 LLM 编造而非数据库召回。
+- 候选线路对其他用户可见。
+- 候选详情缺失推荐理由、风险或证据。

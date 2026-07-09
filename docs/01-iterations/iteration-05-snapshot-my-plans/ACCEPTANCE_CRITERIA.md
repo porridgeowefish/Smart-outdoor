@@ -1,16 +1,18 @@
 # Acceptance Criteria
 
-Status: draft
+Status: active
 Owner: project maintainer
-Last reviewed: 2026-05-08
-Source of truth: product acceptance and tests.
+Last reviewed: 2026-06-14
+Source of truth: acceptance checklist for Iteration 05.
 
-```text
-候选详情页点击保存
-我的规划出现卡片
-点击卡片进入快照详情
-快照详情展示保存时刻内容
-快照详情可以通过 route.route_id 进入线路详情
-可以回到来源 trip_plan 继续对话
-当前不支持备注、分享文案、分页或状态筛选
-```
+- [US-05.1] 用户在候选详情页点击保存后，“我的规划”出现该线路卡片。
+- [US-05.1] 用户不能把同一条候选重复保存为多张卡片。
+- [US-05.1] 保存的是当时的规划内容，不会因线路本体后续变化而自动改变。
+- [US-05.2] “我的规划”列表只出现当前用户自己保存的卡片，看不到别人的。
+- [US-05.2] 列表展示线路摘要、优势标签、推荐理由和保存时间。
+- [US-05.3] 用户点击卡片可进入保存时刻的规划详情。
+- [US-05.3] 详情展示保存时刻的规划理由、风险和证据。
+- [US-05.3] 用户可以从快照详情回到来源规划继续对话。
+- [US-05.3] 用户可以从快照详情进入该线路的本体详情。
+- [US-05.3] 用户不能查看他人保存的快照详情。
+- 当前不支持备注、分享文案、列表分页或状态筛选。

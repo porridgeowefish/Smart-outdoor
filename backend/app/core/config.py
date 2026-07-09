@@ -33,6 +33,7 @@ class Settings:
     tavily_api_key: str | None
     openai_api_key: str | None
     openai_model: str
+    embedding_model: str
     openai_base_url: str
     llm_timeout_seconds: float
 
@@ -82,6 +83,7 @@ def get_settings() -> Settings:
         tavily_api_key=os.getenv("TAVILY_API_KEY"),
         openai_api_key=os.getenv("OPENAI_API_KEY"),
         openai_model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        embedding_model=os.getenv("EMBEDDING_MODEL", "text-embedding-3-small"),
         openai_base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
         llm_timeout_seconds=float(os.getenv("LLM_TIMEOUT_SECONDS", "20")),
     )

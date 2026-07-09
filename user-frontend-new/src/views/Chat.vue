@@ -274,18 +274,8 @@
           </div>
         </div>
 
-        <section class="mb-4 rounded-2xl bg-emerald-50 p-4 text-[13px] leading-relaxed text-emerald-900">
-          <div class="mb-1 text-[12px] font-black text-emerald-600">AI 详情总结</div>
-          <p class="whitespace-pre-wrap font-medium">{{ llmDetailCard(candidateDetail) || candidateDetail.recommendation_reason }}</p>
-        </section>
-
         <div class="space-y-3 text-[13px] text-slate-600">
-          <EvidencePanel title="规划说明" tone="slate">
-            <template #badge>{{ planningDuration(candidateDetail) }}</template>
-            <p class="leading-relaxed">{{ planningSummary(candidateDetail) }}</p>
-          </EvidencePanel>
-
-          <EvidencePanel title="天气证据" tone="sky">
+          <EvidencePanel title="天气" tone="sky">
             <template #badge>{{ statusLabel(weatherEvidence(candidateDetail).status) }}</template>
             <p class="leading-relaxed">{{ textOrFallback(weatherEvidence(candidateDetail).summary) }}</p>
             <div v-if="weatherCurrent(candidateDetail)" class="mt-2 flex flex-wrap gap-2 text-[12px] text-slate-500">
@@ -293,13 +283,27 @@
               <span v-if="weatherCurrent(candidateDetail)?.temp !== undefined">{{ weatherCurrent(candidateDetail)?.temp }}°C</span>
               <span v-if="weatherCurrent(candidateDetail)?.wind_scale">风力 {{ weatherCurrent(candidateDetail)?.wind_scale }}</span>
             </div>
+            <div v-if="weatherOutdoorIndex(candidateDetail)" class="mt-2 grid grid-cols-2 gap-2 text-[12px]">
+              <span class="rounded-lg bg-white px-2 py-1 text-slate-600">体感 {{ indexValue(weatherOutdoorIndex(candidateDetail)?.feels_like_c, '°C') }}</span>
+              <span class="rounded-lg bg-white px-2 py-1 text-slate-600">风寒 {{ indexValue(weatherOutdoorIndex(candidateDetail)?.wind_chill_c, '°C') }}</span>
+              <span class="rounded-lg bg-white px-2 py-1 text-slate-600">紫外线 {{ textOrFallback(weatherOutdoorIndex(candidateDetail)?.uv_level, '未确认') }}</span>
+              <span class="rounded-lg bg-white px-2 py-1 text-slate-600">体感等级 {{ textOrFallback(weatherOutdoorIndex(candidateDetail)?.comfort_level, '未确认') }}</span>
+            </div>
+            <p v-if="highestPointWeather(candidateDetail)" class="mt-2 rounded-lg bg-white px-2 py-1 text-[12px] leading-relaxed text-slate-500">
+              最高点约 {{ highestPointWeather(candidateDetail)?.elevation_m }}m，估算气温 {{ indexValue(highestPointWeather(candidateDetail)?.estimated_temp_c, '°C') }}。{{ highestPointWeather(candidateDetail)?.basis }}
+            </p>
+          </EvidencePanel>
+
+          <EvidencePanel title="出行攻略" tone="slate">
+            <template #badge>{{ planningDuration(candidateDetail) }}</template>
+            <p class="leading-relaxed">{{ planningSummary(candidateDetail) }}</p>
           </EvidencePanel>
 
           <EvidencePanel title="交通方案" tone="indigo">
             <template #badge>{{ statusLabel(transportEvidence(candidateDetail).status) }}</template>
             <p class="leading-relaxed">{{ textOrFallback(transportEvidence(candidateDetail).summary) }}</p>
-            <div v-if="transportPlans(candidateDetail).length" class="mt-2 space-y-2">
-              <div v-for="plan in transportPlans(candidateDetail).slice(0, 2)" :key="`${plan.mode}-${plan.duration_minutes}`" class="rounded-xl bg-white p-2">
+            <div v-if="visibleTransportPlans(candidateDetail).length" class="mt-2 space-y-2">
+              <div v-for="plan in visibleTransportPlans(candidateDetail)" :key="`${plan.mode}-${plan.duration_minutes}`" class="rounded-xl bg-white p-2">
                 <div class="mb-1 flex items-center justify-between">
                   <span class="font-bold text-slate-700">{{ planModeLabel(plan.mode) }}</span>
                   <span class="text-[11px] text-slate-400">{{ plan.duration_minutes ? `${plan.duration_minutes} 分钟` : '耗时未确认' }}</span>
@@ -316,9 +320,18 @@
             </div>
           </EvidencePanel>
 
-          <EvidencePanel title="近期公开信息" tone="amber">
+          <EvidencePanel title="沿途风光与公开信息" tone="amber">
             <template #badge>{{ statusLabel(webEvidence(candidateDetail).status) }}</template>
             <p class="leading-relaxed">{{ textOrFallback(webEvidence(candidateDetail).summary) }}</p>
+            <div v-if="emergencyContacts(candidateDetail).length" class="mt-2 flex flex-wrap gap-1.5">
+              <span
+                v-for="contact in emergencyContacts(candidateDetail)"
+                :key="contact.phone"
+                class="rounded-md bg-white px-2 py-1 text-[11px] font-bold text-slate-600"
+              >
+                {{ contact.label }} {{ contact.phone }}
+              </span>
+            </div>
             <a
               v-for="source in webSources(candidateDetail).slice(0, 3)"
               :key="source.url"
@@ -845,10 +858,6 @@ function evidence(candidate: CandidateRouteDetailResponse | null): AnyRecord {
   return (candidate?.evidence || {}) as AnyRecord
 }
 
-function llmDetailCard(candidate: CandidateRouteDetailResponse | null) {
-  return textOrFallback(planning(candidate).llm_detail_card, '')
-}
-
 function planningSummary(candidate: CandidateRouteDetailResponse | null) {
   return textOrFallback(planning(candidate).summary)
 }
@@ -865,6 +874,14 @@ function weatherCurrent(candidate: CandidateRouteDetailResponse | null): AnyReco
   return (weatherEvidence(candidate).current || null) as AnyRecord | null
 }
 
+function weatherOutdoorIndex(candidate: CandidateRouteDetailResponse | null): AnyRecord | null {
+  return (weatherEvidence(candidate).outdoor_indices || null) as AnyRecord | null
+}
+
+function highestPointWeather(candidate: CandidateRouteDetailResponse | null): AnyRecord | null {
+  return (weatherEvidence(candidate).highest_point_weather_estimate || null) as AnyRecord | null
+}
+
 function transportEvidence(candidate: CandidateRouteDetailResponse | null): AnyRecord {
   return (evidence(candidate).transport || {}) as AnyRecord
 }
@@ -874,6 +891,13 @@ function transportPlans(candidate: CandidateRouteDetailResponse | null): AnyReco
   return Array.isArray(plans) ? plans : []
 }
 
+function visibleTransportPlans(candidate: CandidateRouteDetailResponse | null): AnyRecord[] {
+  const plans = transportPlans(candidate)
+  const selfDrive = plans.find((plan) => plan.mode === 'self_drive')
+  const others = plans.filter((plan) => plan !== selfDrive)
+  return (selfDrive ? [selfDrive, ...others] : others).slice(0, 3)
+}
+
 function webEvidence(candidate: CandidateRouteDetailResponse | null): AnyRecord {
   return (evidence(candidate).web_evidence || {}) as AnyRecord
 }
@@ -881,6 +905,18 @@ function webEvidence(candidate: CandidateRouteDetailResponse | null): AnyRecord 
 function webSources(candidate: CandidateRouteDetailResponse | null): AnyRecord[] {
   const sources = webEvidence(candidate).sources
   return Array.isArray(sources) ? sources : []
+}
+
+function emergencyContacts(candidate: CandidateRouteDetailResponse | null): AnyRecord[] {
+  const contacts = webEvidence(candidate).emergency_contacts
+  if (!Array.isArray(contacts)) return []
+  const seen = new Set<string>()
+  return contacts.filter((contact) => {
+    const phone = String(contact.phone || '')
+    if (!phone || seen.has(phone)) return false
+    seen.add(phone)
+    return true
+  })
 }
 
 function textOrFallback(value: unknown, fallback = '未确认') {
@@ -896,6 +932,11 @@ function statusLabel(value: unknown) {
     unavailable: '不可用',
   }
   return map[String(value || '')] || '未确认'
+}
+
+function indexValue(value: unknown, unit = '') {
+  if (typeof value !== 'number' || Number.isNaN(value)) return '未确认'
+  return `${value}${unit}`
 }
 
 function planModeLabel(mode: unknown) {

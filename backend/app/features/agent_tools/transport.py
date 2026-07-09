@@ -120,11 +120,14 @@ def _amap_transport(
                 plans.extend(_try_transit_plans(client, payload, origin, destination, api_key, raw))
             elif preferred_mode in {"public_transport", "bus", "rail_plus_car"}:
                 plans.extend(_try_transit_plans(client, payload, origin, destination, api_key, raw))
-                if not plans or payload.cross_city_hint:
-                    plans.insert(0, _amap_driving_plan(client, origin, destination, api_key, raw))
+                driving_plan = _try_driving_plan(client, origin, destination, api_key, raw)
+                if driving_plan is not None:
+                    plans.append(driving_plan)
             elif preferred_mode == "flight_plus_car":
                 plans.append(_flight_unavailable_plan())
-                plans.append(_amap_driving_plan(client, origin, destination, api_key, raw))
+                driving_plan = _try_driving_plan(client, origin, destination, api_key, raw)
+                if driving_plan is not None:
+                    plans.append(driving_plan)
     except (httpx.HTTPError, ToolRequestError) as exc:
         return TransportEvidence(
             status="unconfirmed",
@@ -228,6 +231,20 @@ def _amap_driving_plan(
         ],
         risk_notes=["停车点、山路路况和返程拥堵仍需出发前复核。"],
     )
+
+
+def _try_driving_plan(
+    client: httpx.Client,
+    origin: Coordinate,
+    destination: Coordinate,
+    api_key: str,
+    raw: dict[str, Any],
+) -> TransportPlan | None:
+    try:
+        return _amap_driving_plan(client, origin, destination, api_key, raw)
+    except ToolRequestError as exc:
+        raw["driving_error"] = str(exc)
+        return None
 
 
 def _try_transit_plans(

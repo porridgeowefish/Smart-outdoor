@@ -1,47 +1,32 @@
 # Acceptance Criteria
 
-Status: draft
+Status: active
 Owner: project maintainer
-Last reviewed: 2026-05-15
+Last reviewed: 2026-06-14
 Source of truth: product acceptance and implementation tests.
 
-```text
-存在统一 StorageService，业务代码不直接拼接本地文件路径作为存储契约。
-local provider 可用于本地开发。
-object storage provider 可通过配置启用或至少有 mockable 边界。
-云端对象存储 provider 优先支持腾讯云 COS。
-存在 POST /api/storage/upload-credentials。
-图片和轨迹文件都支持前端直传。
-后端不接收图片原图。
-头像 metadata 入库后返回 avatar_url。
-头像保存 display / thumbnail variants。
-路线封面保存 large / thumbnail variants。
-线路列表使用 thumbnail cover URL。
-线路详情使用 large cover URL。
-路线原始 GPX / KML / GeoJSON 完整保存。
-route_files 记录 storage_provider、storage_key、content_type、size_bytes、original_filename、checksum。
-checksum 由后端读取对象存储原始 bytes 后计算。
-POST /api/routes/upload 使用 JSON metadata complete，不再依赖 multipart 文件流。
-旧 multipart 上传契约被直接替换，不保留并行 legacy 上传接口。
-full track_geojson 作为派生文件写入对象存储。
-track_preview_geojson 写入数据库。
-preview 使用 Douglas-Peucker，tolerance_m=10，max_segment_length_m=150。
-preview 不使用最多 80 点硬限制。
-GET /api/routes 返回 track_preview。
-GET /api/routes/{route_id} 返回 track_preview 和完整轨迹访问入口。
-GET /api/routes/{route_id}/track 返回完整派生 GeoJSON 或受控访问入口。
-原始轨迹 file_url 不作为地图渲染主路径。
-前端页面不关心 local / object storage provider。
-mock / real storage 切换不改页面代码。
-```
+- [US-07.1] 用户可以申请到头像、路线封面、路线轨迹文件三类资产的临时上传凭据。
+- [US-07.1] 不同类型资产的凭据只能写入各自的存储路径，不能互用。
+- [US-07.1] 上传凭据有时效，过期后无法继续上传。
+- [US-07.1] 前端在本地和云部署环境中使用同一套上传凭据接口。
+- [US-07.2] 用户上传头像后，资料页能展示可访问的头像。
+- [US-07.2] 头像存在适合头像圈展示的小尺寸版本。
+- [US-07.3] 用户上传路线封面后，列表使用小尺寸封面，详情使用大尺寸封面。
+- [US-07.3] 后端不接收或保留图片原图。
+- [US-07.4] 用户上传的原始轨迹文件（GPX/KML/GeoJSON）被完整保存，可被后端读取。
+- [US-07.4] 后端能为上传的轨迹计算出线路距离、海拔等指标。
+- [US-07.4] 轨迹解析失败时，线路和原始文件记录仍然保留，并标出解析失败。
+- [US-07.5] 线路列表和详情初屏能快速展示可信的路线形状。
+- [US-07.5] 详情地图能按需加载完整轨迹。
+- [US-07.5] 原始轨迹文件下载地址不作为地图渲染的主路径。
+- [US-07.5] 切换本地/云存储不影响前端页面行为。
+- [US-07.6] 头像和路线封面都有处理状态，能在前端同步直传成功时标记完成。
 
-## 明确不做
+## 不验收为完成
 
-```text
-不保留图片上传原图。
-不压缩或改写轨迹原始文件。
-不把 full track_geojson 继续作为数据库主事实源。
-不一次性新增统一 file_assets 表。
-不在本轮实现完整文件管理后台。
-不在本轮引入消息队列或真实云函数触发。
-```
+- 后端接收或长期保留图片原图。
+- 压缩或改写轨迹原始文件内容。
+- 把完整 track_geojson 继续作为数据库主事实源。
+- 新增统一 file_assets 表。
+- 实现完整文件管理后台。
+- 引入消息队列或真实云函数触发。

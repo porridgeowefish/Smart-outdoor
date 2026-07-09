@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
 
 CHOICE_WRITABLE_FIELDS = {
@@ -15,6 +15,8 @@ CHOICE_WRITABLE_FIELDS = {
     "scenery_preferences",
     "supply_requirement",
     "ability_hint",
+    "current_location",
+    "service_preferences",
 }
 
 CORE_REQUIRED_FIELDS = [
@@ -36,6 +38,8 @@ FIELD_LABELS = {
     "scenery_preferences": "风景",
     "supply_requirement": "补给",
     "ability_hint": "强度偏好",
+    "current_location": "当前位置",
+    "service_preferences": "服务/补给",
 }
 
 DISPLAY_VALUES = {
@@ -47,6 +51,9 @@ DISPLAY_VALUES = {
     "safety_first": "安全优先",
     "balanced": "风景和安全平衡",
 }
+
+GEO_FIELDS = frozenset({"current_location", "departure_area"})
+
 
 RISK_KEYWORDS = ("雪", "冰", "野路", "亲子", "新手", "安全", "危险")
 
@@ -91,6 +98,8 @@ def merge_text_context_state(existing_state: dict, extracted_state: dict, conten
         source = field_sources.get(field)
         if source == "user_choice" and not _text_explicitly_mentions_field(field, content):
             continue
+        if field in GEO_FIELDS:
+            value = _structure_geo_value(value)
         state[field] = value
         field_sources[field] = (
             "user_explicit_text"
@@ -162,8 +171,9 @@ def confirmed_context(context_state: dict) -> dict:
 
 def context_summary(context_state: dict, content: str) -> str:
     parts = []
-    if context_state.get("departure_area"):
-        parts.append(f"从{context_state['departure_area']}出发")
+    departure = geo_raw_text(context_state.get("departure_area"))
+    if departure:
+        parts.append(f"从{departure}出发")
     if context_state.get("activity_goal"):
         parts.append(str(context_state["activity_goal"]))
     if context_state.get("transport_hint") == "self_drive":
@@ -183,6 +193,10 @@ def display_context_value(field: str, value: Any) -> str:
             return str(value.get("raw_text") or value.get("duration_days") or value)
         if field == "ability_hint":
             return str(value.get("raw_text") or value.get("level") or value)
+        if field == "current_location":
+            return str(value.get("raw_text") or value)
+        if field == "departure_area":
+            return str(value.get("raw_text") or value)
         return str(value)
     if isinstance(value, list):
         return "、".join(str(DISPLAY_VALUES.get(str(item), item)) for item in value)
@@ -216,3 +230,52 @@ def _text_explicitly_mentions_field(field: str, content: str) -> bool:
         "safety_priority": ("安全", "危险", "稳妥"),
     }
     return any(keyword in content for keyword in checks.get(field, ()))
+
+
+def geocode_location(
+    raw_text: str,
+    geocoder: Callable[[str], Any] | None = None,
+) -> dict:
+    """Map a place name + optional geocoder result into a structured geo dict.
+
+    Returns {"raw_text": raw_text, "lat": float|None, "lng": float|None}. When
+    geocoder is None or returns None (mock / no key / parse failure) the result
+    degrades to null coordinates. Coordinate uses ``lon``; the spec stores
+    ``lng`` — mapped once here at the boundary.
+    """
+    if geocoder is None:
+        return {"raw_text": raw_text, "lat": None, "lng": None}
+    coord = geocoder(raw_text)
+    if coord is None:
+        return {"raw_text": raw_text, "lat": None, "lng": None}
+    return {"raw_text": raw_text, "lat": coord.lat, "lng": coord.lon}
+
+
+def _structure_geo_value(value: Any) -> dict | None:
+    """Normalize a geo field value into {raw_text, lat, lng} or None.
+
+    Accepts a legacy str (→ lat/lng null), an existing structured dict, or
+    None. Applied at the merge boundary so storage is always structured
+    regardless of whether the value came from text extraction (str) or a
+    prior choice.
+    """
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        raw_text = value.get("raw_text")
+        if not raw_text:
+            return None
+        return {
+            "raw_text": raw_text,
+            "lat": value.get("lat"),
+            "lng": value.get("lng"),
+        }
+    if isinstance(value, str) and value.strip():
+        return {"raw_text": value, "lat": None, "lng": None}
+    return None
+
+
+def geo_raw_text(value: Any) -> str | None:
+    """Return the raw_text of a geo field (structured dict or legacy str), else None."""
+    structured = _structure_geo_value(value)
+    return structured["raw_text"] if structured else None

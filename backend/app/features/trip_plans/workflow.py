@@ -31,7 +31,7 @@ def run_mock_recommendation(
         detail = planning_detail(route, analysis)
         detail["matched_tags"] = score.matched_tags
         detail["route_tags"] = score.route_tags[:12]
-        evidence = candidate_evidence(route, analysis, trip_plan.context_state or {})
+        evidence = candidate_evidence(route, analysis, trip_plan.context_state or {}, llm_provider)
         evidence["evaluator"] = evaluate_candidate_output(detail, evidence)
         detail["llm_detail_card"] = llm_provider.generate_response(
             ResponseGenerationInput(

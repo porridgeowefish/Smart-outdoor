@@ -20,6 +20,9 @@ class AgentLLMProvider(Protocol):
     def generate_response(self, payload: ResponseGenerationInput) -> ResponseGenerationResult:
         raise NotImplementedError
 
+    def embed_texts(self, texts: list[str]) -> list[list[float]]:
+        raise NotImplementedError
+
 
 def get_llm_provider() -> AgentLLMProvider:
     from app.features.llm.mock import MockLLMProvider
@@ -35,4 +38,5 @@ def get_llm_provider() -> AgentLLMProvider:
         model=settings.openai_model,
         base_url=settings.openai_base_url,
         timeout_seconds=settings.llm_timeout_seconds,
+        embedding_model=settings.embedding_model,
     )

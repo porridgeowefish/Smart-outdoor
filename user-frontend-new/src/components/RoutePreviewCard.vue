@@ -31,8 +31,8 @@
         stroke-linecap="round"
         stroke-linejoin="round"
       />
-      <circle v-if="startPoint" :cx="startPoint[0]" :cy="startPoint[1]" r="3.2" fill="#10b981" stroke="#fff" stroke-width="1.5" />
-      <circle v-if="endPoint" :cx="endPoint[0]" :cy="endPoint[1]" r="3.2" fill="#ef4444" stroke="#fff" stroke-width="1.5" />
+      <circle v-if="startPoint" :cx="startPoint[0]" :cy="startPoint[1]" r="2.1" fill="#10b981" stroke="#fff" stroke-width="1" />
+      <circle v-if="endPoint" :cx="endPoint[0]" :cy="endPoint[1]" r="2.1" fill="#334155" stroke="#fff" stroke-width="1" />
     </svg>
 
     <div v-if="showStats" class="absolute bottom-2 left-2 rounded-full bg-white/90 px-2 py-1 text-[11px] font-black text-slate-700 shadow-sm">

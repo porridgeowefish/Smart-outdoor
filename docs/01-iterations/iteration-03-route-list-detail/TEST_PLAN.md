@@ -1,36 +1,45 @@
 # Test Plan
 
-Status: draft
+Status: superseded (API 见 Iteration 07)
 Owner: project maintainer
-Last reviewed: 2026-05-08
-Source of truth: backend tests.
+Last reviewed: 2026-06-14
+Source of truth: backend tests。
 
-## API 测试
+## Service / Unit
 
-```text
-默认返回 public + 当前用户 private
-不返回其他用户 private
-visibility=public 只返回 public
-visibility=private 只返回当前用户 private
-tags 筛选 any
-tags 筛选 all
-GET /api/routes/tag-taxonomy 返回标签分类
-列表返回 location
-列表返回 track_preview，且 preview coordinates 不超过 80 个点
-详情返回 analysis
-详情返回 track.geojson
-详情返回 primary_file
-详情返回 actions
-private 详情权限正确
+- [US-03.1] display_tags 由 manual_tags 扁平化生成，最多取 3 个。
+- [US-03.1] location 优先取 analysis_json.location.display_name，否则回退 manual_tags，否则 "待识别"。
+- [US-03.1] track_preview 由 build_track_preview 从 track_geojson 派生。
+- [US-03.1] 无 analysis 的线路不破坏列表响应（跳过该条或返回降级字段）。
+- [US-03.1] 距离/爬升范围过滤在内存中执行；分页 total 反映过滤后结果。
+
+## API
+
+- [US-03.1] 默认返回 public + 当前用户 private。
+- [US-03.1] 不返回其他用户 private。
+- [US-03.1] visibility=public 只返回 public；visibility=private 只返回当前用户 private。
+- [US-03.1] tags 筛选 any 命中任一即返回；筛选 all 须全命中。
+- [US-03.1] GET /api/routes/tag-taxonomy 返回标签分类。
+- [US-03.1] 列表返回 location 与 track_preview。
+- [US-03.2] 详情返回 analysis、track、primary_file、actions。
+- [US-03.2] private 详情仅创建者本人可查看；他人访问返回 404。
+
+## 权限
+
+- [US-03.1] 未登录访问 /api/routes 返回 401。
+- [US-03.2] 未登录访问 /api/routes/{route_id} 返回 401。
+- [US-03.2] 用户访问他人 private 线路详情 → 404 ROUTE_NOT_FOUND。
+
+## 失败路径
+
+- [US-03.2] route_id 不存在 → 404 ROUTE_NOT_FOUND。
+
+## 验证命令
+
+```powershell
+pytest tests/routes
 ```
 
-## Service 测试
+## 历史来源
 
-```text
-display_tags 生成稳定
-display_tags 从 manual_tags 扁平化后最多取 3 个
-location 从 analysis_json 或 manual_tags 派生
-track_preview 使用等距索引采样
-无 analysis 的线路不破坏列表响应
-分页 total 正确
-```
+- backend/tests/routes（实际测试路径以仓库为准）

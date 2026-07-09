@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart_outdoor 文档管理系统 UML</title>
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --card: #ffffff;
+    --ink: #1f2328;
+    --muted: #57606a;
+    --line: #d8dee4;
+    --accent: #0969da;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", "Microsoft YaHei", "PingFang SC", Roboto, sans-serif;
+    line-height: 1.65;
+  }
+  header {
+    background: var(--card);
+    border-bottom: 1px solid var(--line);
+    padding: 28px 32px;
+  }
+  header h1 { margin: 0 0 8px; font-size: 22px; }
+  header p { margin: 0; color: var(--muted); font-size: 14px; max-width: 880px; }
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 24px 64px;
+  }
+  section.card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 24px 28px;
+    margin-bottom: 28px;
+  }
+  section.card h2 {
+    margin: 0 0 4px;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .tag {
+    display: inline-block;
+    font-size: 12px;
+    color: var(--accent);
+    background: #ddf4ff;
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-weight: 600;
+  }
+  section.card .desc {
+    color: var(--muted);
+    font-size: 14px;
+    margin: 6px 0 18px;
+  }
+  .mermaid {
+    text-align: center;
+    background: #fbfcfd;
+    border-radius: 8px;
+    padding: 18px;
+    border: 1px dashed var(--line);
+    overflow-x: auto;
+  }
+  .legend {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: #f6f8fa;
+    border-radius: 6px;
+  }
+  .legend code {
+    background: #eaeef2;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    padding: 16px;
+  }
+  .err { color: #cf222e; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Smart_outdoor 文档管理系统 · 三幅 UML</h1>
+  <p>反映文档治理第三批修复后的当前结构：顶层入口只留规则与路由，细节下沉到 agent-rules 原子文件，每个事实源单一 owner，其余以指针引用。需要联网加载 Mermaid 渲染库。</p>
+</header>
+
+<main>
+
+  <!-- ============ 图 1：组件 / 结构 ============ -->
+  <section class="card">
+    <h2><span class="tag">组件图</span>文档分层与渐进式披露链</h2>
+    <p class="desc">三类文档（00 长期架构 / 01 迭代交付 / 99 归档）+ 入口路由。Agent 从 AGENTS.md 经 INDEX 一层层读到对应原子规则，不一次性加载全部规则。</p>
+    <pre class="mermaid">
+flowchart TD
+    AG["AGENTS.md · 八耻八荣+披露入口"]
+    IDX["INDEX.md · 统一入口（人+Agent）"]
+    SUB00["00 README · 产品与架构"]
+    SUB01["01 README · 敏捷迭代"]
+    SUBR["agent-rules/README · 原子规则索引"]
+    DOCSTD["DOCUMENTATION_STANDARD · 文档规范"]
+    ADR["ADR 0001~0003 · 架构决策记录"]
+    ARCH["SYSTEM / AGENT / DATA_MODEL · 长期架构"]
+    ITER["iteration 01~09 · 迭代交付"]
+    ARC["99-archive · 历史归档（只读）"]
+    ATOM["10/20/30...90 · 原子规则文件"]
+
+    AG --> IDX
+    IDX --> SUB00
+    IDX --> SUB01
+    IDX --> SUBR
+    SUBR --> ATOM
+    SUB00 --> ARCH
+    SUB00 --> ADR
+    SUB00 --> DOCSTD
+    SUB01 --> ITER
+    IDX -.-> ARC
+    </pre>
+    <div class="legend">实线 = 主路由 · 读取链；虚线 = 只读追溯。顶层入口 <code>AGENTS.md</code> 与 <code>INDEX.md</code> 保持简洁，细节由各领域 README 与原子文件承载。</div>
+  </section>
+
+  <!-- ============ 图 2：类图 / 单一事实源归属 ============ -->
+  <section class="card">
+    <h2><span class="tag">类图</span>单一事实源归属（去重后）</h2>
+    <p class="desc">每个事实源只有一个 owner（note 标注"拥有"），其余文档以虚线指针引用。这是第三批去重的核心结果——消除逐字重复，避免维护漂移。</p>
+    <pre class="mermaid">
+classDiagram
+    INDEX ..> IterREADME : 迭代顺序
+    DocGov ..> INDEX : 更新时机总表
+    DocGov ..> RulesREADME : 新增规则流程
+    DocStandard ..> IterDeliv : 必备文档清单
+    DocStandard ..> DocGov : 架构变更落点表
+    IterDeliv ..> IterREADME : 迭代顺序
+
+    note for INDEX "INDEX.md · 拥有：文档更新时机（规则）/ 事实源优先级"
+    note for DocGov "10-documentation-governance · 拥有：架构变更落点表 + Last reviewed 规则"
+    note for IterDeliv "20-iteration-delivery · 拥有：每轮必备文档清单"
+    note for IterREADME "01-iterations/README · 拥有：MVP 迭代顺序表 01~09"
+    note for RulesREADME "agent-rules/README 第4节 · 拥有：新增规则流程（8 步）"
+    note for DocStandard "DOCUMENTATION_STANDARD · 拥有：文档规范总则（指向各 owner）"
+    </pre>
+    <div class="legend">虚线箭头 <code>..&gt;</code> = 指针引用（箭头指向 owner）。例：<code>DOCUMENTATION_STANDARD</code> 的 §3.2 不再复制 7 份文档清单，而是指向 <code>20-iteration-delivery</code>。</div>
+  </section>
+
+  <!-- ============ 图 3：时序图 / 读取流程 ============ -->
+  <section class="card">
+    <h2><span class="tag">时序图</span>Agent 渐进式读取流程</h2>
+    <p class="desc">一个任务从入口读到具体规则的四步，以及长任务中六个刷新点重新读取的时刻（见 90-simplicity-and-refresh）。</p>
+    <pre class="mermaid">
+sequenceDiagram
+    participant A as Agent
+    participant AG as AGENTS.md
+    participant IDX as INDEX.md
+    participant RR as agent-rules/README
+    participant Atom as 原子规则文件
+
+    A->>AG: 1 读八耻八荣 + 披露入口
+    AG-->>A: 指向 INDEX
+    A->>IDX: 2 读事实源优先级 + 任务路由
+    IDX-->>A: 路由到领域入口
+    A->>RR: 3 读触发条件表
+    RR-->>A: 命中任务类型
+    A->>Atom: 4 按触发条件读对应规则
+    Atom-->>A: 返回原子规则
+
+    Note over A,Atom: 长任务刷新点：开工前 / 新增规则前 / 改接口或表前 / 跨前后端部署边界前 / 测试改策略前 / 最终回复前
+    </pre>
+    <div class="legend">触发条件示例：COS 与图片资产 → <code>70-object-storage</code>；TripPlan / 推荐 → <code>60-agent-workflow-safety</code>；数据库边界 → <code>50-domain-boundaries</code>。</div>
+  </section>
+
+</main>
+
+<footer>Smart_outdoor · 文档治理第三批 · 2026-06-14 · Mermaid 11 渲染</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'default',
+    securityLevel: 'loose',
+    flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+    sequence: { useMaxWidth: true }
+  });
+</script>
+</body>
+</html>

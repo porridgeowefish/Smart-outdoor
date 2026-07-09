@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Iteration 09 对齐 02 - 意图、追问与标签来源</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #182230;
+      --muted: #667085;
+      --line: #d0d5dd;
+      --surface: #fff;
+      --page: #f2f4f7;
+      --green: #087a67;
+      --green-soft: #e5f5f1;
+      --blue: #175cd3;
+      --blue-soft: #eaf2ff;
+      --amber: #b54708;
+      --amber-soft: #fff4e5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+    }
+    header {
+      padding: 26px min(6vw, 72px) 18px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+    }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    h2 { margin: 0 0 16px; font-size: 22px; }
+    h3 { margin: 20px 0 8px; font-size: 16px; }
+    p, li { line-height: 1.7; }
+    .subtitle { margin: 0; color: var(--muted); }
+    .layout {
+      display: grid;
+      grid-template-columns: 270px minmax(0, 1fr);
+      gap: 22px;
+      padding: 22px min(6vw, 72px) 40px;
+    }
+    nav {
+      position: sticky;
+      top: 16px;
+      align-self: start;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 12px;
+    }
+    nav button, .pager button, .actions button {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      padding: 10px 12px;
+      cursor: pointer;
+      font: inherit;
+    }
+    nav button {
+      width: 100%;
+      margin: 4px 0;
+      text-align: left;
+    }
+    nav button.active {
+      background: var(--green-soft);
+      border-color: var(--green);
+      color: #065f52;
+      font-weight: 700;
+    }
+    main {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 24px;
+    }
+    section { display: none; }
+    section.active { display: block; }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(110px, 1fr));
+      gap: 8px;
+      margin: 18px 0;
+    }
+    .step {
+      min-height: 104px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f9fafb;
+      padding: 11px;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .step strong { display: block; margin-bottom: 5px; color: var(--green); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fff;
+    }
+    .panel.good { border-left: 4px solid var(--green); }
+    .panel.warn { border-left: 4px solid var(--amber); }
+    .callout {
+      border: 1px solid #f4c790;
+      border-radius: 8px;
+      background: var(--amber-soft);
+      padding: 13px;
+      margin: 14px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 9px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #f2f4f7; }
+    .question {
+      border-top: 1px solid var(--line);
+      margin-top: 20px;
+      padding-top: 18px;
+    }
+    label.option {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin: 8px 0;
+      padding: 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    label.option span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 3px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 88px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px;
+      font: inherit;
+    }
+    code { background: #edf1f5; border-radius: 4px; padding: 2px 5px; }
+    pre {
+      white-space: pre-wrap;
+      overflow: auto;
+      border-radius: 8px;
+      background: #101828;
+      color: #f9fafb;
+      padding: 13px;
+    }
+    .pager {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 24px;
+    }
+    .primary {
+      background: var(--green) !important;
+      border-color: var(--green) !important;
+      color: #fff !important;
+    }
+    .actions {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f9fafb;
+      padding: 14px;
+    }
+    .actions textarea { margin-top: 10px; min-height: 230px; }
+    @media (max-width: 920px) {
+      .layout { grid-template-columns: 1fr; padding: 14px; }
+      nav { position: static; }
+      .flow, .grid { grid-template-columns: 1fr; }
+      main { padding: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Iteration 09 对齐 02</h1>
+    <p class="subtitle">主题：用户措辞如何经过 RAG 形成追问，以及现有路线标签体系与意图知识库的关系。建议导出到 <code>docs/01-iterations/iteration-09-tag-knowledge-base-rag-choice-cards/alignment/iteration-09-alignment-02-answers.md</code>。</p>
+  </header>
+
+  <div class="layout">
+    <nav id="nav"></nav>
+    <main>
+      <section class="active" data-title="目标">
+        <h2>1. 目标表述</h2>
+        <p>本轮目标不是让 RAG 直接判断“用户要简单路线”，而是识别用户话语中存在一个需要澄清的意图维度，再用标准标签和线路指标组织追问。</p>
+        <div class="flow">
+          <div class="step"><strong>用户措辞</strong>希望线路比较简单</div>
+          <div class="step"><strong>意图召回</strong>可能涉及体力、路面、导航、安全和服务</div>
+          <div class="step"><strong>歧义判断</strong>“简单”无法唯一映射为一个标签</div>
+          <div class="step"><strong>结构化追问</strong>你更在意哪种简单？</div>
+          <div class="step"><strong>用户确认</strong>爬升少 + 路面清楚</div>
+          <div class="step"><strong>标准写入</strong>指标约束 + preference/avoid tags</div>
+        </div>
+        <div class="question">
+          <h3>Q1：是否采用这一定义？</h3>
+          <label class="option"><input type="radio" name="goal" value="clarify_before_write" checked><div><strong>先识别歧义，再追问确认</strong><span>RAG 找到可能方向，但不直接写入最终标签。</span></div></label>
+          <label class="option"><input type="radio" name="goal" value="direct_when_confident"><div><strong>高置信时直接写入</strong><span>只有歧义或低置信时才追问。</span></div></label>
+          <label class="option"><input type="radio" name="goal" value="always_direct"><div><strong>直接推断标签</strong><span>追问尽量少，由系统自动决定。</span></div></label>
+          <textarea name="goal_notes" placeholder="补充你对 Iteration 09 目标的表述。"></textarea>
+        </div>
+      </section>
+
+      <section data-title="现有标签">
+        <h2>2. 现有标签体系能否直接使用</h2>
+        <div class="grid">
+          <div class="panel good">
+            <strong>可以直接复用的部分</strong>
+            <p>现有 <code>TAG_TAXONOMY</code> 已定义路线侧标准标签，例如铺装路、有路标、景区管理、补给、信号、下撤点、风景和人群。</p>
+          </div>
+          <div class="panel warn">
+            <strong>不能直接承担的部分</strong>
+            <p>它没有完整描述用户措辞、意图维度、正反表达、标签组合关系、追问方式和指标约束，因此还不是完整 RAG 知识库。</p>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>层次</th><th>职责</th><th>示例</th></tr></thead>
+          <tbody>
+            <tr><td>路线标准标签库</td><td>线路具有什么属性</td><td>公路/铺装路、有路标、多个下撤点</td></tr>
+            <tr><td>客观指标</td><td>可计算、可比较的技术事实</td><td>距离、爬升、坡度、预计耗时</td></tr>
+            <tr><td>意图知识库</td><td>用户措辞可能指向哪些维度</td><td>“简单”可能是体力轻松、路好走、容易导航</td></tr>
+            <tr><td>选择卡模板</td><td>把候选维度组织成可确认问题</td><td>你更在意体力、路面还是导航？</td></tr>
+          </tbody>
+        </table>
+        <div class="question">
+          <h3>Q2：是否确认采用“双层知识体系”？</h3>
+          <label class="option"><input type="radio" name="knowledge_layers" value="two_layers" checked><div><strong>路线标签库 + 意图知识库</strong><span>路线标签作为标准输出，意图知识库负责从措辞到追问。</span></div></label>
+          <label class="option"><input type="radio" name="knowledge_layers" value="single_extended_taxonomy"><div><strong>扩展现有标签库</strong><span>把用户表达和追问信息都加进同一个结构。</span></div></label>
+          <textarea name="knowledge_notes" placeholder="补充标签管理方式或你希望保留的单一事实源。"></textarea>
+        </div>
+      </section>
+
+      <section data-title="简单线路">
+        <h2>3. “线路比较简单”如何处理</h2>
+        <div class="callout"><strong>重要：</strong>“简单”不是一个足够精确的路线事实。系统不能直接把它等同于“铺装路”或“亲子友好”。</div>
+        <table>
+          <thead><tr><th>用户可能的真实意思</th><th>对应数据</th><th>可能的确认选项</th></tr></thead>
+          <tbody>
+            <tr><td>体力轻松</td><td>距离、爬升、预计时长、能力画像</td><td>距离短 / 爬升少 / 时间短</td></tr>
+            <tr><td>路面好走</td><td>terrain 标签</td><td>铺装路 / 石板平路 / 常规土路</td></tr>
+            <tr><td>不容易迷路</td><td>有路标、景区运营管理</td><td>路标清楚 / 成熟景区路线</td></tr>
+            <tr><td>风险更低</td><td>下撤点、信号、救援点、野路避开项</td><td>可下撤 / 有信号 / 避开野路</td></tr>
+            <tr><td>服务方便</td><td>补给、卫生间、交通设施</td><td>有补给 / 有卫生间 / 交通方便</td></tr>
+          </tbody>
+        </table>
+        <h3>推荐追问</h3>
+        <pre>你说的“简单”更接近哪一种？
+- 体力轻松：距离和爬升少
+- 路面好走：尽量是铺装路、石板路或清晰步道
+- 容易导航：有路标、成熟路线，不容易走错
+- 更稳妥：有信号、下撤方便，避开野路
+- 都希望有，优先帮我找综合轻松的</pre>
+        <div class="question">
+          <h3>Q3：选择卡应如何组织？</h3>
+          <label class="option"><input type="radio" name="simple_question" value="dimension_first" checked><div><strong>先问“哪种简单”</strong><span>确认维度后，再按需要询问具体阈值或偏好。</span></div></label>
+          <label class="option"><input type="radio" name="simple_question" value="direct_bundle"><div><strong>直接给组合套餐</strong><span>例如轻松休闲、成熟步道、安全稳妥。</span></div></label>
+          <label class="option"><input type="radio" name="simple_question" value="both"><div><strong>维度 + 推荐组合</strong><span>给几个组合，同时允许用户自定义。</span></div></label>
+          <textarea name="simple_notes" placeholder="修改问题文案或选项。"></textarea>
+        </div>
+      </section>
+
+      <section data-title="写入规则">
+        <h2>4. 用户确认后写到哪里</h2>
+        <p>不建议所有答案都塞入 <code>preference_tags</code>。客观指标约束和标签偏好应分开。</p>
+        <table>
+          <thead><tr><th>用户确认</th><th>建议写入</th></tr></thead>
+          <tbody>
+            <tr><td>距离短、爬升少、一天内</td><td>结构化指标约束，例如 distance/elevation/time preference</td></tr>
+            <tr><td>铺装路、石板平路、有路标</td><td><code>preference_tags</code></td></tr>
+            <tr><td>不要野路、不要冰雪路、不要无信号</td><td><code>avoid_tags</code></td></tr>
+            <tr><td>安全优先、体力轻松</td><td>场景字段或强度偏好，同时结合能力画像</td></tr>
+          </tbody>
+        </table>
+        <div class="question">
+          <h3>Q4：是否确认“指标与标签分开写入”？</h3>
+          <label class="option"><input type="radio" name="write_model" value="separate" checked><div><strong>分开写入</strong><span>指标进入结构化约束，路线属性进入 preference/avoid tags。</span></div></label>
+          <label class="option"><input type="radio" name="write_model" value="tags_only"><div><strong>统一写成标签</strong><span>实现简单，但后续精确召回和重排较弱。</span></div></label>
+          <textarea name="write_notes" placeholder="补充希望新增的 context_state 字段。"></textarea>
+        </div>
+      </section>
+
+      <section data-title="RAG职责">
+        <h2>5. RAG 与 LLM 的职责</h2>
+        <table>
+          <thead><tr><th>组件</th><th>负责</th><th>不负责</th></tr></thead>
+          <tbody>
+            <tr><td>RAG</td><td>从措辞召回意图维度、关联标签、避开项和追问模板</td><td>直接替用户确认最终偏好</td></tr>
+            <tr><td>规则层</td><td>判断是否有歧义、是否需要追问、允许写入哪些字段</td><td>自由创造标签</td></tr>
+            <tr><td>LLM</td><td>理解上下文、对召回结果排序、生成自然问题文案</td><td>生成标签库外的业务值</td></tr>
+            <tr><td>Pydantic</td><td>验证 choice_request 和答案结构</td><td>理解业务语义</td></tr>
+            <tr><td>用户</td><td>确认真正需求</td><td>承担系统猜测造成的隐性结论</td></tr>
+          </tbody>
+        </table>
+        <div class="question">
+          <h3>Q5：LLM 是否允许调整选项？</h3>
+          <label class="option"><input type="radio" name="llm_option_scope" value="wording_only" checked><div><strong>只调整文案和排序</strong><span>选项值必须来自知识库或规则生成器。</span></div></label>
+          <label class="option"><input type="radio" name="llm_option_scope" value="propose_then_validate"><div><strong>允许提出新选项，但必须映射校验</strong><span>无法映射的选项降级为自定义文本。</span></div></label>
+          <label class="option"><input type="radio" name="llm_option_scope" value="free_generation"><div><strong>允许自由生成</strong><span>灵活，但稳定性和可测试性较差。</span></div></label>
+          <textarea name="llm_notes" placeholder="补充 LLM 的边界和降级方式。"></textarea>
+        </div>
+      </section>
+
+      <section data-title="导出">
+        <h2>6. 导出回答</h2>
+        <p>完成判断后导出为：</p>
+        <pre>docs/01-iterations/iteration-09-tag-knowledge-base-rag-choice-cards/alignment/iteration-09-alignment-02-answers.md</pre>
+        <div class="actions">
+          <button type="button" class="primary" onclick="generateMarkdown()">生成 Markdown</button>
+          <button type="button" onclick="downloadMarkdown()">下载 Markdown</button>
+          <textarea id="output" placeholder="回答 Markdown 会显示在这里。"></textarea>
+        </div>
+      </section>
+
+      <div class="pager">
+        <button type="button" onclick="showPage(current - 1)">上一页</button>
+        <button type="button" class="primary" onclick="showPage(current + 1)">下一页</button>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const sections = Array.from(document.querySelectorAll("section"));
+    const nav = document.getElementById("nav");
+    let current = 0;
+
+    sections.forEach((section, index) => {
+      const button = document.createElement("button");
+      button.textContent = `${index + 1}. ${section.dataset.title}`;
+      button.onclick = () => showPage(index);
+      nav.appendChild(button);
+    });
+
+    function showPage(index) {
+      current = Math.max(0, Math.min(sections.length - 1, index));
+      sections.forEach((section, i) => section.classList.toggle("active", i === current));
+      Array.from(nav.children).forEach((button, i) => button.classList.toggle("active", i === current));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function radio(name) {
+      const input = document.querySelector(`input[name="${name}"]:checked`);
+      return input ? input.value : "";
+    }
+
+    function note(name) {
+      const input = document.querySelector(`[name="${name}"]`);
+      return input && input.value.trim() ? input.value.trim() : "(none)";
+    }
+
+    function generateMarkdown() {
+      const markdown = [
+        "# Iteration 09 Alignment 02 Answers",
+        "",
+        "Status: human-feedback",
+        "Created from: iteration-09-alignment-02-intent-tag-source.html",
+        "",
+        "## Q1 Goal",
+        "",
+        `- decision: ${radio("goal")}`,
+        `- notes: ${note("goal_notes")}`,
+        "",
+        "## Q2 Knowledge Layers",
+        "",
+        `- decision: ${radio("knowledge_layers")}`,
+        `- notes: ${note("knowledge_notes")}`,
+        "",
+        "## Q3 Simple Route Question",
+        "",
+        `- decision: ${radio("simple_question")}`,
+        `- notes: ${note("simple_notes")}`,
+        "",
+        "## Q4 Write Model",
+        "",
+        `- decision: ${radio("write_model")}`,
+        `- notes: ${note("write_notes")}`,
+        "",
+        "## Q5 LLM Option Scope",
+        "",
+        `- decision: ${radio("llm_option_scope")}`,
+        `- notes: ${note("llm_notes")}`,
+        ""
+      ].join("\n");
+      document.getElementById("output").value = markdown;
+      return markdown;
+    }
+
+    function downloadMarkdown() {
+      const markdown = generateMarkdown();
+      const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "iteration-09-alignment-02-answers.md";
+      link.click();
+      URL.revokeObjectURL(link.href);
+    }
+
+    showPage(0);
+  </script>
+</body>
+</html>

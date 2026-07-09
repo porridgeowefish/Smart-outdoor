@@ -9,7 +9,7 @@
     </div>
     <div v-else class="absolute left-3 bottom-3 bg-white/90 backdrop-blur rounded-full shadow px-2 py-1 flex items-center gap-1.5">
       <span class="text-[10px] text-slate-500 font-medium">海拔</span>
-      <span class="w-16 h-1.5 rounded-full bg-gradient-to-r from-[#22c55e] via-[#eab308] to-[#ef4444]"></span>
+      <span class="w-16 h-1.5 rounded-full bg-gradient-to-r from-[#2f9e72] via-[#c2a64b] to-[#5b7c99]"></span>
     </div>
     <div v-if="mapReady" class="absolute right-3 bottom-3 bg-white/95 backdrop-blur rounded-full shadow p-1 flex items-center gap-1">
       <button
@@ -178,6 +178,6 @@ function clearOverlays() {
 }
 
 function markerContent(text: string, color: string) {
-  return `<div style="width:24px;height:24px;border-radius:999px;background:${color};color:white;border:2px solid white;box-shadow:0 2px 8px rgba(15,23,42,.25);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">${text}</div>`
+  return `<div style="width:18px;height:18px;border-radius:999px;background:${color};color:white;border:1.5px solid white;box-shadow:0 2px 8px rgba(15,23,42,.22);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;">${text}</div>`
 }
 </script>

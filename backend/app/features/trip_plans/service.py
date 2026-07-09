@@ -5,6 +5,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.features.geo.forward import forward_geocode
 from app.features.llm.provider import get_llm_provider
 from app.features.llm.schemas import ContextExtractionInput
 from app.features.routes.model import RouteAnalysisSnapshot, RouteAsset
@@ -16,11 +17,18 @@ from app.features.routes.service import (
 )
 from app.features.trip_plans.events import event, sse_lines
 from app.features.trip_plans.context import (
+    GEO_FIELDS,
     confirmed_context,
     context_summary,
+    geocode_location,
     merge_choice_answers,
     merge_text_context_state,
     missing_context_fields,
+)
+from app.features.trip_plans.intent_kb import (
+    DIMENSIONS,
+    IntentKB,
+    merge_dimensions,
 )
 from app.features.trip_plans.model import (
     AgentRun,
@@ -33,6 +41,7 @@ from app.features.trip_plans.schemas import (
     CandidateRouteDetailResponse,
     CandidateRouteItem,
     CandidateRouteSummary,
+    ChoiceAnswer,
     ChoiceRequest,
     ChoiceResultRequest,
     RoutePlanSnapshotDetailResponse,
@@ -126,11 +135,13 @@ def handle_user_message(
         context_result.context_state,
         content,
     )
+    if not merged_context.get("_rag_phase"):
+        merged_context = _maybe_start_rag(merged_context, content)
     trip_plan.context_state = merged_context
     trip_plan.context_summary = context_summary(merged_context, content)
     db.add(trip_plan)
 
-    if is_sufficient(db, trip_plan, merged_context):
+    if not merged_context.get("_rag_phase") and is_sufficient(db, trip_plan, merged_context):
         assistant_content, candidates, events = run_mock_recommendation(
             db, current_user, trip_plan, agent_run, llm_provider
         )
@@ -208,10 +219,7 @@ def handle_choice_results(
     _ensure_choice_request_active(db, trip_plan_id, payload.choice_request_id)
     _validate_choice_answers(choice_request_message.payload or {}, payload)
 
-    try:
-        merged_context = merge_choice_answers(trip_plan.context_state or {}, payload.answers)
-    except ValueError as exc:
-        raise InvalidChoiceResultError(str(exc)) from exc
+    merged_context = _apply_choice_answers(trip_plan.context_state or {}, payload.answers)
     trip_plan.context_state = merged_context
     trip_plan.context_summary = context_summary(merged_context, _choice_result_content(payload))
     db.add(trip_plan)
@@ -460,15 +468,191 @@ def get_route_plan_snapshot_detail(
     return _snapshot_detail(snapshot)
 
 
+_CURRENT_LOCATION_OPTIONS = [
+    {"label": "深圳", "value": "shenzhen", "description": "广东 · 深圳"},
+    {"label": "成都", "value": "chengdu", "description": "四川 · 成都"},
+    {"label": "北京", "value": "beijing", "description": "北京"},
+    {"label": "上海", "value": "shanghai", "description": "上海"},
+    {"label": "广州", "value": "guangzhou", "description": "广东 · 广州"},
+    {"label": "杭州", "value": "hangzhou", "description": "浙江 · 杭州"},
+]
+
+
+def _enrich_geo_fields(
+    context_state: dict, answers: list[ChoiceAnswer]
+) -> dict:
+    """Overwrite bare geo answers (current_location / departure_area) with a
+    geocoded structured dict.
+
+    merge_choice_answers stores the raw chosen value (a slug or typed text);
+    the structured {raw_text, lat, lng} needs a network geocode, so it is
+    produced here and overwrites the bare value before persistence. raw_text
+    prefers custom_text (typed place) else the option label.
+    """
+    state = dict(context_state)
+    for answer in answers:
+        if answer.field not in GEO_FIELDS:
+            continue
+        label = answer.label if isinstance(answer.label, str) else (
+            answer.label[0] if answer.label else ""
+        )
+        raw_text = answer.custom_text or label
+        state[answer.field] = geocode_location(raw_text, forward_geocode)
+    return state
+
+
 def _build_choice_request(context_state: dict) -> ChoiceRequest:
-    questions = [
-        _question_for_field(field)
-        for field in missing_context_fields(context_state or {})[:3]
-    ]
+    phase = (context_state or {}).get("_rag_phase")
+    if phase == "dimension":
+        questions = [_dimension_question(context_state)]
+    elif phase == "tag":
+        questions = _tag_questions(context_state)
+    else:
+        missing = missing_context_fields(context_state or {})
+        questions = [_question_for_field(field) for field in missing[:3]]
+        if not (context_state or {}).get("current_location") and len(questions) < 3:
+            questions.append(_question_for_field("current_location"))
     return ChoiceRequest(
         choice_request_id=f"choice_req_{uuid.uuid4()}",
         questions=questions,
     )
+
+
+_intent_kb_cache: IntentKB | None = None
+
+
+def _get_intent_kb() -> IntentKB:
+    global _intent_kb_cache
+    if _intent_kb_cache is None:
+        _intent_kb_cache = IntentKB(get_llm_provider())
+    return _intent_kb_cache
+
+
+def _maybe_start_rag(context_state: dict, query: str) -> dict:
+    dims = merge_dimensions(_get_intent_kb().recall(query))
+    if len(dims) < 2:
+        return context_state
+    state = dict(context_state)
+    state["_rag_phase"] = "dimension"
+    state["_rag_dim_options"] = [dim["key"] for dim in dims]
+    return state
+
+
+def _dimension_question(context_state: dict) -> dict[str, Any]:
+    options = []
+    for dim_key in (context_state or {}).get("_rag_dim_options") or []:
+        meta = DIMENSIONS.get(dim_key)
+        if meta is None:
+            continue
+        options.append({"label": meta["label"], "value": dim_key, "description": None})
+    return {
+        "type": "multi_choice",
+        "field": "intent_dimensions",
+        "question": "你说的更接近下面哪几种？可以多选。",
+        "header": "需求方向",
+        "options": options,
+        "multi_select": True,
+        "allow_custom": False,
+    }
+
+
+def _tag_questions(context_state: dict) -> list[dict[str, Any]]:
+    questions: list[dict[str, Any]] = []
+    for dim_key in ((context_state or {}).get("_rag_tag_pending") or [])[:3]:
+        meta = DIMENSIONS.get(dim_key)
+        if meta is None or meta.get("type") != "objective":
+            continue
+        questions.append(
+            {
+                "type": "multi_choice",
+                "field": meta["write_field"],
+                "question": meta["question"],
+                "header": meta["header"],
+                "options": [
+                    {"label": tag, "value": tag, "description": None}
+                    for tag in meta.get("tag_source") or []
+                ],
+                "multi_select": True,
+                "allow_custom": True,
+            }
+        )
+    return questions
+
+
+def _apply_choice_answers(
+    context_state: dict, answers: list[ChoiceAnswer]
+) -> dict:
+    phase = context_state.get("_rag_phase")
+    if phase == "dimension":
+        return _apply_dimension_selection(context_state, answers)
+    try:
+        merged = merge_choice_answers(context_state, answers)
+    except ValueError as exc:
+        raise InvalidChoiceResultError(str(exc)) from exc
+    merged = _enrich_geo_fields(merged, answers)
+    if phase == "tag":
+        merged = _consume_tag_phase(merged, answers)
+    return merged
+
+
+def _apply_dimension_selection(
+    context_state: dict, answers: list[ChoiceAnswer]
+) -> dict:
+    state = dict(context_state)
+    field_sources = dict(state.get("field_sources") or {})
+    confirmed_fields = list(state.get("confirmed_fields") or [])
+    selected: list[str] = []
+    for answer in answers:
+        if answer.field != "intent_dimensions":
+            continue
+        values = answer.value if isinstance(answer.value, list) else [answer.value]
+        selected.extend(str(value) for value in values)
+
+    pending_tags: list[str] = []
+    for dim_key in selected:
+        meta = DIMENSIONS.get(dim_key)
+        if meta is None:
+            continue
+        if meta["type"] == "subjective":
+            level = meta.get("ability_level")
+            if level:
+                state["ability_hint"] = {"level": level}
+                field_sources["ability_hint"] = "user_choice"
+                if "ability_hint" not in confirmed_fields:
+                    confirmed_fields.append("ability_hint")
+        elif meta["type"] == "objective":
+            pending_tags.append(dim_key)
+
+    state["field_sources"] = field_sources
+    state["confirmed_fields"] = confirmed_fields
+    state.pop("_rag_dim_options", None)
+    if pending_tags:
+        state["_rag_phase"] = "tag"
+        state["_rag_tag_pending"] = pending_tags
+    else:
+        state.pop("_rag_phase", None)
+        state.pop("_rag_tag_pending", None)
+    state["missing_fields"] = missing_context_fields(state)
+    return state
+
+
+def _consume_tag_phase(
+    context_state: dict, answers: list[ChoiceAnswer]
+) -> dict:
+    state = dict(context_state)
+    answered_fields = {answer.field for answer in answers}
+    pending = [
+        dim_key
+        for dim_key in (state.get("_rag_tag_pending") or [])
+        if DIMENSIONS.get(dim_key, {}).get("write_field") not in answered_fields
+    ]
+    if pending:
+        state["_rag_tag_pending"] = pending
+    else:
+        state.pop("_rag_phase", None)
+        state.pop("_rag_tag_pending", None)
+        state.pop("_rag_dim_options", None)
+    return state
 
 
 def _question_for_field(field: str) -> dict[str, Any]:
@@ -520,6 +704,16 @@ def _question_for_field(field: str) -> dict[str, Any]:
                     "description": "可以接受普通山路，但不主动选择高风险路段。",
                 },
             ],
+            "multi_select": False,
+            "allow_custom": True,
+        }
+    if field == "current_location":
+        return {
+            "type": "single_choice",
+            "field": field,
+            "question": "你现在在哪个城市？方便我们按距离和交通推荐。",
+            "header": "当前位置",
+            "options": _CURRENT_LOCATION_OPTIONS,
             "multi_select": False,
             "allow_custom": True,
         }

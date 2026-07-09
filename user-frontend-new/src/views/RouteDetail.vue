@@ -95,23 +95,32 @@
             <span class="text-[12px] text-slate-500 font-medium">{{ elevationRangeText }}</span>
           </div>
 
-          <div class="h-[140px] bg-white border border-slate-200 rounded-xl relative p-3 overflow-hidden">
-            <div class="absolute inset-0 flex flex-col justify-between p-3 opacity-20 pointer-events-none">
-              <div class="border-b border-slate-300 w-full h-0"></div>
-              <div class="border-b border-slate-300 w-full h-0"></div>
-              <div class="border-b border-slate-300 w-full h-0"></div>
-              <div class="border-b border-slate-300 w-full h-0"></div>
+          <div class="h-[156px] bg-[#fbfcfa] border border-slate-200 rounded-xl relative overflow-hidden shadow-sm">
+            <div class="absolute inset-x-3 top-4 bottom-6 flex flex-col justify-between opacity-60 pointer-events-none">
+              <div class="border-b border-dashed border-slate-200 w-full h-0"></div>
+              <div class="border-b border-dashed border-slate-200 w-full h-0"></div>
+              <div class="border-b border-dashed border-slate-200 w-full h-0"></div>
             </div>
-            <span class="absolute top-2 left-2 text-[10px] text-slate-400 bg-white/80 px-1">{{ valueOrDash(routeData.analysis.elevation_max_m) }}m</span>
-            <span class="absolute bottom-2 left-2 text-[10px] text-slate-400 bg-white/80 px-1">{{ valueOrDash(routeData.analysis.elevation_min_m) }}m</span>
+            <span class="absolute top-3 left-3 text-[10px] font-semibold text-slate-400 bg-[#fbfcfa]/90 px-1">{{ valueOrDash(routeData.analysis.elevation_max_m) }}m</span>
+            <span class="absolute bottom-3 left-3 text-[10px] font-semibold text-slate-400 bg-[#fbfcfa]/90 px-1">{{ valueOrDash(routeData.analysis.elevation_min_m) }}m</span>
 
-            <svg v-if="elevationPath" class="w-full h-full absolute bottom-0 left-0" viewBox="0 0 100 50" preserveAspectRatio="none">
+            <svg v-if="elevationLinePath" class="w-full h-full absolute bottom-0 left-0" viewBox="0 0 100 56" preserveAspectRatio="none">
               <linearGradient id="elevGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#10b981" stop-opacity="0.3"></stop>
-                <stop offset="100%" stop-color="#10b981" stop-opacity="0.05"></stop>
+                <stop offset="0%" stop-color="#2f9e72" stop-opacity="0.18"></stop>
+                <stop offset="100%" stop-color="#5b7c99" stop-opacity="0.03"></stop>
               </linearGradient>
-              <path :d="`${elevationPath} L 100,50 L 0,50 Z`" fill="url(#elevGrad)"></path>
-              <path :d="elevationPath" fill="none" stroke="#10b981" stroke-width="1.5" vector-effect="non-scaling-stroke"></path>
+              <path :d="elevationAreaPath" fill="url(#elevGrad)"></path>
+              <path
+                v-for="segment in steepProfileSegments"
+                :key="segment"
+                :d="segment"
+                fill="none"
+                stroke="#d69e2e"
+                stroke-width="2.1"
+                stroke-linecap="round"
+                vector-effect="non-scaling-stroke"
+              ></path>
+              <path :d="elevationLinePath" fill="none" stroke="#2f9e72" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></path>
             </svg>
             <div v-else class="h-full flex items-center justify-center text-[12px] text-slate-400">无海拔数据</div>
           </div>
@@ -223,20 +232,58 @@ const displayTags = computed(() => {
   }).slice(0, 8)
 })
 
-const elevationPath = computed(() => {
-  if (!routeData.value || !mapGeojson.value) return ''
+type ElevationProfilePoint = {
+  x: number
+  y: number
+  elevation: number
+}
+
+const elevationProfilePoints = computed<ElevationProfilePoint[]>(() => {
+  if (!routeData.value || !mapGeojson.value) return []
   const coordinates = extractLineCoordinates(mapGeojson.value)
   const points = coordinates.filter((point) => typeof point[2] === 'number')
-  if (points.length < 2) return ''
+  if (points.length < 2) return []
   const elevations = points.map((point) => point[2] as number)
   const min = Math.min(...elevations)
   const max = Math.max(...elevations)
-  if (max === min) return ''
+  if (max === min) return []
   return points.map((point, index) => {
     const x = points.length === 1 ? 0 : index / (points.length - 1) * 100
-    const y = 46 - (((point[2] as number) - min) / (max - min)) * 40
-    return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)},${y.toFixed(2)}`
-  }).join(' ')
+    const y = 48 - (((point[2] as number) - min) / (max - min)) * 36
+    return {
+      x: Number(x.toFixed(2)),
+      y: Number(y.toFixed(2)),
+      elevation: point[2] as number,
+    }
+  })
+})
+
+const elevationLinePath = computed(() => {
+  if (elevationProfilePoints.value.length < 2) return ''
+  return elevationProfilePoints.value
+    .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x},${point.y}`)
+    .join(' ')
+})
+
+const elevationAreaPath = computed(() => {
+  if (!elevationLinePath.value) return ''
+  return `${elevationLinePath.value} L 100,56 L 0,56 Z`
+})
+
+const steepProfileSegments = computed(() => {
+  const points = elevationProfilePoints.value
+  if (points.length < 2) return []
+  const segments: string[] = []
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1]
+    const next = points[index]
+    const horizontalUnits = Math.max(next.x - previous.x, 0.01)
+    const relativeGrade = Math.abs(next.elevation - previous.elevation) / horizontalUnits
+    if (relativeGrade >= 7) {
+      segments.push(`M ${previous.x},${previous.y} L ${next.x},${next.y}`)
+    }
+  }
+  return segments
 })
 
 const elevationRangeText = computed(() => {

@@ -32,9 +32,11 @@ class OpenAILLMProvider:
         model: str,
         base_url: str,
         timeout_seconds: float = 20.0,
+        embedding_model: str = "text-embedding-3-small",
         client: Any | None = None,
     ) -> None:
         self.model = model
+        self.embedding_model = embedding_model
         self.client = client or OpenAI(
             api_key=api_key,
             base_url=base_url,
@@ -90,6 +92,21 @@ class OpenAILLMProvider:
             return self._fallback.generate_response(payload)
         except OpenAIError:
             return self._fallback.generate_response(payload)
+
+    def embed_texts(self, texts: list[str]) -> list[list[float]]:
+        if not texts:
+            return []
+        try:
+            response = self.client.embeddings.create(
+                model=self.embedding_model,
+                input=texts,
+            )
+            return [
+                list(entry.embedding)
+                for entry in sorted(response.data, key=lambda item: item.index)
+            ]
+        except Exception:
+            return self._fallback.embed_texts(texts)
 
     def _result_from_decoded(
         self,

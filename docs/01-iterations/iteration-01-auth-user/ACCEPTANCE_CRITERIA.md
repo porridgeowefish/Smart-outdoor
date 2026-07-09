@@ -1,17 +1,19 @@
 # Acceptance Criteria
 
-Status: draft
+Status: active
 Owner: project maintainer
-Last reviewed: 2026-05-08
-Source of truth: product acceptance and tests.
+Last reviewed: 2026-06-14
+Source of truth: acceptance checklist for Iteration 01.
 
-```text
-用户可以注册
-用户可以登录
-localStorage 保存 token
-后续请求自动带 Bearer token
-个人中心可以看到昵称和头像
-用户只能更新 nickname / avatar_url
-未登录不能访问 /api/me
-```
-
+- [US-01.1] 新用户可以用用户名和密码注册成功。
+- [US-01.1] 注册成功后系统返回用户基础信息，且不返回密码相关字段。
+- [US-01.1] 用户名已被使用时，系统返回明确的错误提示。
+- [US-01.2] 已注册用户可以用用户名和密码登录。
+- [US-01.2] 登录成功后系统返回可继续请求使用的凭证。
+- [US-01.2] 密码错误时，系统返回登录失败。
+- [US-01.2] 后续请求携带凭证时，系统能识别当前用户。
+- [US-01.2] 未携带或携带失效凭证的请求，系统拒绝访问当前用户资料。
+- [US-01.3] 登录用户可以查看自己的基础资料。
+- [US-01.3] 登录用户可以更新自己的昵称。
+- [US-01.3] 登录用户可以更新自己的头像。
+- [US-01.3] 用户不能修改自己的角色、状态、密码等非资料字段。

@@ -110,6 +110,18 @@ GET /api/routes/{route_id}
 docs/01-iterations/iteration-08-agent-v2-choice-based-requirement-convergence/
 ```
 
+### Iteration 09 Tag Knowledge Base + RAG-assisted Choice Cards
+
+本轮先进入对齐与文档积累阶段。目标是在 Iteration 08 的选择卡机制上，引入最小可测试的标签知识库和 RAG 辅助召回能力，把用户自然表达中隐含的风景、路况、安全、补给和风险维度转化为可确认的选择卡选项。
+
+RAG 只辅助生成候选方向，不替用户做最终偏好决定；用户确认后，标准标签再写入 `context_state.preference_tags` 和 `context_state.avoid_tags`。
+
+详细范围以当前迭代目录为准：
+
+```text
+docs/01-iterations/iteration-09-tag-knowledge-base-rag-choice-cards/
+```
+
 ## 每轮完成定义
 
 ```text

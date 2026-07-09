@@ -2,88 +2,46 @@
 
 Status: active
 Owner: project maintainer
-Last reviewed: 2026-05-08
+Last reviewed: 2026-06-14
 Source of truth: implementation plus this iteration directory.
 
 ## 用户闭环
 
 用户在“出去走走”发送消息，系统创建或继续 trip_plan，建立 AgentRun，基于数据库线路资产召回候选，并返回可渲染的候选卡片。
 
+## 本轮目标
+
+```text
+完成 TripPlan + Agent workflow 的最小可运行闭环。
+用户发消息创建或继续规划对话，系统同步执行 workflow 并返回 assistant 文案与候选线路。
+候选线路由后端从数据库可见 route_assets 规则召回排序，不由 LLM 编造。
+天气 / 交通 / Web 证据查询只对 top 3 候选执行，用于详情与文案，不参与排序。
+提供 SSE 事件回放接口（前端接入与真实边执行边推送留待后续）。
+```
+
 ## 范围
 
-接口：
+### 本轮覆盖
 
 ```text
-GET /api/trip-plans
-GET /api/trip-plans/{trip_plan_id}/messages
-POST /api/trip-plans/messages
-GET /api/agent-runs/{agent_run_id}/events
-GET /api/trip-plans/{trip_plan_id}/candidate-routes/{candidate_id}
+第一条消息创建 trip_plan，后续消息追加到同一 trip_plan。
+每条用户消息创建一个 agent_run。
+closed trip_plan 禁止追加。
+消息接口同步执行 Agent workflow，直接返回 assistant_message / run_status / candidate_routes。
+route_retrieval 从数据库可见线路（public + 本人 private，且须有 analysis snapshot）规则排序，最多 3 条候选。
+证据（天气 / 交通 / Web）只对 top 3 候选查询，进入 candidate detail 与 assistant 文案。
+TripPlan 列表、会话历史、候选详情读取。
+GET /api/agent-runs/{agent_run_id}/events 从 events_json 回放 SSE。
 ```
 
-交付：
+### 暂不进入
 
 ```text
-第一条消息创建 trip_plan
-后续消息追加到同一 trip_plan
-每条用户消息创建 agent_run
-closed trip_plan 禁止追加
-消息接口同步执行 Agent workflow，直接返回 assistant_message / run_status / candidate_routes
-TripPlan 列表和对话历史读取
-SSE 后端事件回放已实现，但前端未接入，真实实时流式 pending
-route_retrieval 从数据库可见线路中规则排序，最多返回 3 条候选
-天气 / 交通 / Web 证据查询发生在 top 3 候选召回之后
-当前 evidence 不参与路线排序，只进入 candidate detail / assistant 文案
-候选详情返回 route + planning_detail + evidence
-```
-
-说明：
-
-```text
-candidate_routes 不是单独列表接口。
-它出现在 POST /api/trip-plans/messages 响应中；
-也出现在 GET /api/trip-plans/{trip_plan_id}/messages 响应中，表示最近一次 AgentRun 的候选线路。
-候选详情接口使用其中的 candidate_id。
-```
-
-## SSE 当前状态
-
-```text
-已实现：
-GET /api/agent-runs/{agent_run_id}/events
-后端把 agent_runs.events_json 转成 text/event-stream 返回。
-
-未完成：
-前端尚未调用该接口。
-当前不是边执行边推送，而是 workflow 完成后的事件回放。
-candidate_routes.updated 不是候选卡片主数据来源。
-
-当前前端主链路：
-POST /api/trip-plans/messages 返回 assistant_message 和 candidate_routes。
-```
-
-## 当前召回共识
-
-```text
-真实 LLM
-用于 context_state 抽取和 assistant 文案生成。
-
-路线召回
-不由 LLM 生成路线；后端从 route_assets + route_analysis_snapshots 规则召回和排序。
-
-召回范围
-route_assets.status = active
-public 线路 + 当前用户自己的 private 线路
-必须存在 route_analysis_snapshot
-
-排序依据
-ability_score + preference_score + metrics_score + 固定 evidence_score。
-
-证据查询
-天气 / 交通 / Web 搜索只对排序后的 top 3 候选执行。
-
-当前限制
-真实天气 / 交通 / Web 证据不参与排序，只用于详情 evidence、evaluator 和回复文案。
+真实边执行边推送（当前 workflow 同步跑完再回放 events_json）。
+前端 SSE 接入与流式体验。
+evidence 参与召回排序（当前固定 evidence_score，真实证据不进排序）。
+client_context 请求字段（当前 Request extra=forbid）。
+新建独立对话接口（沿用 messages 合并接口 + trip_plan_id 区分新建/继续）。
 ```
 
 ## 历史来源
@@ -92,14 +50,3 @@ ability_score + preference_score + metrics_score + 固定 evidence_score。
 - `docs/99-archive/backend-docs-legacy/US-01_API_CONTRACT.md`
 - `docs/99-archive/backend-docs-legacy/US-01_DATABASE_DESIGN.md`
 - `docs/99-archive/backend-docs-legacy/US-01_AGENT_WORKFLOW.md`
-
-## 本轮必补文档
-
-```text
-USER_STORIES.md
-API_CONTRACT.md
-DATABASE_DESIGN.md
-TEST_PLAN.md
-ACCEPTANCE_CRITERIA.md
-DELIVERY_NOTES.md
-```

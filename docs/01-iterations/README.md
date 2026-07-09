@@ -19,6 +19,7 @@ Source of truth: iteration subdirectories define delivery scope.
 | 06 | Ability Profile | [iteration-06-ability-profile](./iteration-06-ability-profile/README.md) |
 | 07 | Object Storage + Image Assets | [iteration-07-object-storage-image-assets](./iteration-07-object-storage-image-assets/README.md) |
 | 08 | Agent V2 Choice-based Requirement Convergence | [iteration-08-agent-v2-choice-based-requirement-convergence](./iteration-08-agent-v2-choice-based-requirement-convergence/README.md) |
+| 09 | Tag Knowledge Base + RAG-assisted Choice Cards | [iteration-09-tag-knowledge-base-rag-choice-cards](./iteration-09-tag-knowledge-base-rag-choice-cards/README.md) |
 
 ## 每轮必备文档
 
