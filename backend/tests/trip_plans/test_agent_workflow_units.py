@@ -14,7 +14,7 @@ from app.features.trip_plans.context import (
     update_context_state,
 )
 from app.features.trip_plans.evaluation import estimated_duration, recommendation_reason
-from app.features.trip_plans.evidence import candidate_evidence, summarize_web_evidence
+from app.features.trip_plans.evidence import candidate_evidence
 
 
 def test_context_update_extracts_current_rule_based_constraints() -> None:
@@ -96,45 +96,6 @@ def test_candidate_evidence_returns_weather_transport_and_web_sources(monkeypatc
     assert evidence["transport"]["preferred_mode"] == "self_drive"
     assert evidence["web_evidence"]["provider"] == "mock"
     assert evidence["web_evidence"]["sources"][0]["url"]
-    assert "测试线路 已筛出" in evidence["web_evidence"]["summary"]
-    assert evidence["web_evidence"]["summary_provider"] == "deterministic_fallback"
-
-
-def test_web_evidence_summary_keeps_compact_fallback_when_llm_returns_source_dump() -> None:
-    class DumpingProvider:
-        provider_name = "dumping"
-
-        def generate_response(self, payload):
-            return SimpleNamespace(
-                provider="dumping",
-                content="# 黄连盂 #徒步 " * 80 + "Please login before leaving comments",
-            )
-
-    route = SimpleNamespace(name="黄连盂")
-    analysis = SimpleNamespace(distance_km=10.0, elevation_gain_m=800)
-    web_evidence = {
-        "status": "confirmed",
-        "summary": "Tavily 找到 2 条与线路名称相关的公开来源。",
-        "sources": [
-            {
-                "title": "黄连盂夜爬攻略",
-                "url": "https://example.com/a",
-                "content": "黄连盂海拔1818米，全程约10公里，部分来源提醒不适合新手。",
-            },
-            {
-                "title": "黄连盂徒步记录",
-                "url": "https://example.com/b",
-                "content": "路线涉及山路，建议出发前核实天气和当地管理信息。",
-            },
-        ],
-    }
-
-    result = summarize_web_evidence(route, analysis, {}, web_evidence, DumpingProvider())
-
-    assert result["summary_provider"] == "deterministic_fallback"
-    assert len(result["summary"]) < 360
-    assert "Please login" not in result["summary"]
-    assert "AI 摘要过长" in result["warnings"][0]
 
 
 def test_geocode_location_returns_structured_dict_when_geocoder_succeeds() -> None:

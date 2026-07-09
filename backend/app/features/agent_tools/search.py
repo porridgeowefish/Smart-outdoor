@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-import re
 from typing import Any, Literal
 
 import httpx
@@ -35,8 +34,6 @@ class SearchEvidence(BaseModel):
     summary: str
     answer: str | None = None
     sources: list[WebEvidenceSource] = Field(default_factory=list)
-    filtered_out_count: int = 0
-    warnings: list[str] = Field(default_factory=list)
     raw: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -72,14 +69,12 @@ def search_evidence_json(payload: SearchRequest) -> dict[str, Any]:
 def _tavily_search(payload: SearchRequest, query: str, api_key: str) -> SearchEvidence:
     retrieved_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     request_body = {
-        "query": _focused_tavily_query(payload, query),
+        "query": query,
         "search_depth": payload.search_depth,
         "max_results": payload.max_results,
         "include_answer": payload.include_answer,
         "include_raw_content": False,
     }
-    if payload.route_name:
-        request_body["exact_match"] = True
     try:
         response = httpx.post(
             "https://api.tavily.com/search",
@@ -111,20 +106,16 @@ def _tavily_search(payload: SearchRequest, query: str, api_key: str) -> SearchEv
             summary=f"Tavily 调用失败，近期公开证据未确认：{exc}",
         )
 
-    parsed_sources = _parse_tavily_sources(data, retrieved_at)
-    sources = _filter_route_sources(parsed_sources, payload.route_name)[: payload.max_results]
-    filtered_out_count = max(0, len(parsed_sources) - len(sources))
+    sources = _parse_tavily_sources(data, retrieved_at)[: payload.max_results]
     answer = data.get("answer") if isinstance(data.get("answer"), str) else None
     if not sources:
         return SearchEvidence(
             status="limited",
             provider="tavily",
             query=query,
-            summary=_limited_summary(payload.route_name, filtered_out_count),
-            answer=None,
+            summary="Tavily 已调用，但没有返回可用来源；近期公开证据不足。",
+            answer=answer,
             sources=[],
-            filtered_out_count=filtered_out_count,
-            warnings=_filter_warnings(filtered_out_count),
             raw=data,
         )
 
@@ -132,14 +123,9 @@ def _tavily_search(payload: SearchRequest, query: str, api_key: str) -> SearchEv
         status="confirmed",
         provider="tavily",
         query=query,
-        summary=(
-            f"Tavily 找到 {len(sources)} 条与线路名称相关的公开来源；"
-            "仍需要以官方公告和出发前实时信息为准。"
-        ),
-        answer=answer if filtered_out_count == 0 else None,
+        summary=f"Tavily 找到 {len(sources)} 条公开来源；仍需要以官方公告和出发前实时信息为准。",
+        answer=answer,
         sources=sources,
-        filtered_out_count=filtered_out_count,
-        warnings=_filter_warnings(filtered_out_count),
         raw=data,
     )
 
@@ -170,92 +156,6 @@ def _parse_tavily_sources(
             )
         )
     return sources
-
-
-def _focused_tavily_query(payload: SearchRequest, fallback_query: str) -> str:
-    route_name = (payload.route_name or "").strip()
-    if not route_name:
-        return fallback_query
-    terms = [f'"{route_name}"', "徒步", "攻略", "路况", "安全"]
-    fallback_terms = [
-        term
-        for term in re.split(r"\s+", fallback_query)
-        if term and term not in route_name and term not in {"沿途风光", "近期", "应急", "电话"}
-    ]
-    for term in fallback_terms:
-        if term not in terms:
-            terms.append(term)
-    return " ".join(terms[:8])
-
-
-def _filter_route_sources(
-    sources: list[WebEvidenceSource],
-    route_name: str | None,
-) -> list[WebEvidenceSource]:
-    tokens = route_match_tokens(route_name)
-    if not tokens:
-        return sources
-    matched = [
-        source
-        for source in sources
-        if _source_matches_route(source, tokens)
-    ]
-    return matched
-
-
-def route_match_tokens(route_name: str | None) -> list[str]:
-    name = _normalize_text(route_name)
-    if not name:
-        return []
-
-    tokens: list[str] = []
-    for part in re.findall(r"[\u4e00-\u9fff]+|[a-z0-9]+", name):
-        if len(part) >= 2:
-            tokens.append(part)
-        if re.fullmatch(r"[\u4e00-\u9fff]+", part) and len(part) >= 4:
-            tokens.extend(part[index : index + 2] for index in range(len(part) - 1))
-
-    generic = {
-        "徒步",
-        "登山",
-        "爬山",
-        "夜爬",
-        "穿越",
-        "环线",
-        "一日",
-        "一日游",
-        "攻略",
-        "路线",
-        "线路",
-    }
-    deduped: list[str] = []
-    for token in tokens:
-        if token in generic or token in deduped:
-            continue
-        deduped.append(token)
-    return deduped
-
-
-def _source_matches_route(source: WebEvidenceSource, tokens: list[str]) -> bool:
-    haystack = _normalize_text(f"{source.title} {source.content} {source.url}")
-    return any(token in haystack for token in tokens)
-
-
-def _normalize_text(value: str | None) -> str:
-    return re.sub(r"[^\u4e00-\u9fffa-z0-9]+", "", (value or "").lower())
-
-
-def _limited_summary(route_name: str | None, filtered_out_count: int) -> str:
-    if filtered_out_count:
-        label = f"“{route_name}”" if route_name else "目标线路"
-        return f"Tavily 返回结果未能匹配{label}名称，已过滤；近期公开证据不足。"
-    return "Tavily 已调用，但没有返回可用来源；近期公开证据不足。"
-
-
-def _filter_warnings(filtered_out_count: int) -> list[str]:
-    if not filtered_out_count:
-        return []
-    return [f"已过滤 {filtered_out_count} 条未匹配线路名称的搜索结果，避免无关内容进入 AI 摘要。"]
 
 
 def _mock_search(payload: SearchRequest, query: str) -> SearchEvidence:

@@ -77,13 +77,12 @@ def search_for_route(
     if location and location != "unknown":
         query_parts.append(location)
     query_parts.append(activity_goal if isinstance(activity_goal, str) else "徒步")
-    query_parts.extend(["攻略", "路况", "安全"])
+    query_parts.extend(["近期", "路况"])
     return search_evidence_json(
         SearchRequest(
             query=" ".join(query_parts),
             route_name=route.name,
             max_results=5,
-            include_answer=False,
         )
     )
 
@@ -101,9 +100,6 @@ def summarize_web_evidence(
 
     contacts = emergency_contacts_from_sources(sources)
     web_evidence["emergency_contacts"] = contacts
-    fallback_summary = compact_web_evidence_summary(route.name, sources, contacts)
-    web_evidence["summary"] = fallback_summary
-    web_evidence["summary_provider"] = "deterministic_fallback"
     if llm_provider is None:
         return web_evidence
 
@@ -136,84 +132,16 @@ def summarize_web_evidence(
                 ],
             )
         )
-        content = result.content.strip()
-        if _is_usable_web_summary(content):
+        if result.content.strip():
             web_evidence["ai_summary"] = result.content.strip()
             web_evidence["summary"] = result.content.strip()
             web_evidence["summary_provider"] = result.provider
-        else:
-            warnings = web_evidence.setdefault("warnings", [])
-            if isinstance(warnings, list):
-                warnings.append("AI 摘要过长或疑似来源正文拼接，已改用简洁摘要。")
     except Exception as exc:
         logger.exception("Web evidence LLM summary failed")
         warnings = web_evidence.setdefault("warnings", [])
         if isinstance(warnings, list):
             warnings.append(f"AI 摘要生成失败：{exc}")
     return web_evidence
-
-
-def compact_web_evidence_summary(
-    route_name: str,
-    sources: list[dict],
-    contacts: list[dict],
-) -> str:
-    source_count = len([source for source in sources if isinstance(source, dict)])
-    title_bits = _unique_nonempty(
-        _clean_source_text(str(source.get("title") or ""))
-        for source in sources[:3]
-        if isinstance(source, dict)
-    )
-    content_bits = _unique_nonempty(
-        _first_sentence(str(source.get("content") or ""))
-        for source in sources[:3]
-        if isinstance(source, dict)
-    )
-    highlights = title_bits[:2] or content_bits[:2]
-    highlight_text = "；".join(highlights) if highlights else "已有公开来源提到该线路相关信息"
-    contact_text = (
-        f"检索到 {len(contacts)} 个公开电话，可展开来源核对。"
-        if contacts
-        else "暂未从来源中提取到明确应急电话。"
-    )
-    return (
-        f"{route_name} 已筛出 {source_count} 条名称匹配的公开来源。"
-        f"来源主要提到：{highlight_text}。"
-        "近期路况、封闭管理和安全信息仍需以官方公告及出发前实时核实为准。"
-        f"{contact_text}"
-    )
-
-
-def _is_usable_web_summary(content: str) -> bool:
-    if not content:
-        return False
-    if len(content) > 360:
-        return False
-    noisy_markers = ("###", "##", "#", "Please login", "vote-icon", "high-quality-icon")
-    if any(marker in content for marker in noisy_markers):
-        return False
-    return True
-
-
-def _unique_nonempty(values: object) -> list[str]:
-    result: list[str] = []
-    for value in values:
-        text = str(value or "").strip()
-        if text and text not in result:
-            result.append(text)
-    return result
-
-
-def _first_sentence(text: str) -> str:
-    cleaned = _clean_source_text(text)
-    if not cleaned:
-        return ""
-    parts = re.split(r"[。！？!?]\s*", cleaned, maxsplit=1)
-    return parts[0][:80]
-
-
-def _clean_source_text(text: str) -> str:
-    return re.sub(r"\s+", " ", text.replace("#", " ")).strip()[:120]
 
 
 def emergency_contacts_from_sources(sources: list[dict]) -> list[dict]:
